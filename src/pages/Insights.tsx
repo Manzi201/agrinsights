@@ -6,7 +6,7 @@ import { getTopDistricts } from '../services/nisr';
 import InsightCard from '../components/ui/InsightCard';
 import AIAnalysisPanel from '../components/ui/AIAnalysisPanel';
 import { useDataVersion } from '../hooks/useAgricultureData';
-import { Lightbulb, Filter, Sparkles } from 'lucide-react';
+import { Lightbulb, Filter } from 'lucide-react';
 
 export default function Insights() {
   const [cropId, setCropId] = useState('maize');
@@ -137,12 +137,12 @@ export default function Insights() {
         </div>
       )}
 
-      {/* AI Deep Dive section */}
+      {/* District Deep Dive section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-4">
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary-600" />
-            <span className="text-sm font-semibold text-gray-700">AI Deep Dive — Choose district:</span>
+            <Lightbulb className="w-4 h-4 text-primary-600" />
+            <span className="text-sm font-semibold text-gray-700">Detailed District Report:</span>
           </div>
           <select
             value={aiDistrictId}
@@ -158,8 +158,7 @@ export default function Insights() {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-blue-800">
-        Insights are auto-generated from NISR data. AI analysis uses Mistral AI with real agricultural figures.
-        The app does not assume the cause of a problem without supporting data.
+        Ibisobanuro bigaragara hano bishingiye ku makuru ya NISR Rwanda. Imibare ikoreshwa ikubiyemo ubuso buhingwa, umusaruro, n'umusaruro kuri hegitari. Raporo ntizemeza impamvu z'ikibazo zitabanje kugira amakuru ayishyigikira.
       </div>
     </div>
   );

@@ -55,7 +55,7 @@ export default function AgriMap() {
 
       <div className="mb-3 bg-primary-50 border border-primary-200 rounded-lg p-3 text-xs sm:text-sm text-primary-800">
         Showing <strong>{crop?.name ?? 'Maize'}</strong> · Season <strong>{season} {year}</strong>.
-        Click a district circle → view details + AI analysis.
+        Click a district circle to view production details and district report.
       </div>
 
       <RwandaMap
@@ -66,7 +66,7 @@ export default function AgriMap() {
         onDistrictClick={setSelectedDistrictId}
       />
 
-      {/* AI panel shown when a district is clicked */}
+      {/* District report shown when a district is clicked */}
       {aiInput && (
         <div className="mt-4">
           <AIAnalysisPanel input={aiInput} />

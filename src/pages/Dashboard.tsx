@@ -127,10 +127,10 @@ export default function Dashboard() {
         <DistrictBarChart data={topDistricts} cropName={cropName} />
       </div>
 
-      {/* AI Analysis panel */}
+      {/* District Analysis panel */}
       <div className="mb-4 sm:mb-6">
-        <div className="flex items-center gap-3 mb-3">
-          <label className="text-xs font-semibold text-gray-600">Analyze district with AI:</label>
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <label className="text-xs font-semibold text-gray-600">District Report:</label>
           <select
             value={selectedDistrict}
             onChange={(e) => setSelectedDistrict(e.target.value)}
