@@ -69,7 +69,7 @@ export default function CropComparison() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
         {/* Crop selection */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
             Select Crops (up to 4)
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -82,7 +82,7 @@ export default function CropComparison() {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                     selected
                       ? 'bg-primary-600 text-white border-primary-600'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-primary-400'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500'
                   }`}
                 >
                   {selected && <Check className="w-4 h-4" />}
@@ -99,7 +99,7 @@ export default function CropComparison() {
 
         {/* District selection */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
             Select Districts (up to 4)
           </h3>
           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
@@ -112,7 +112,7 @@ export default function CropComparison() {
                   className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
                     selected
                       ? 'bg-primary-600 text-white border-primary-600'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-primary-400'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500'
                   }`}
                 >
                   {selected && <Check className="w-3.5 h-3.5" />}
@@ -223,8 +223,8 @@ export default function CropComparison() {
               </thead>
               <tbody>
                 {tableData.map((row, i) => (
-                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 dark:bg-gray-700">
-                    <td className="py-2 px-3 text-gray-700">{row.districtName}</td>
+                  <tr key={i} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                    <td className="py-2 px-3 text-gray-700 dark:text-gray-200">{row.districtName}</td>
                     <td className="py-2 px-3">
                       <span className="inline-flex items-center gap-1.5">
                         <span
@@ -237,10 +237,10 @@ export default function CropComparison() {
                     <td className="py-2 px-3 text-right font-medium text-gray-900 dark:text-white">
                       {formatNumber(row.production)}
                     </td>
-                    <td className="py-2 px-3 text-right text-gray-600">
+                    <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">
                       {formatNumber(row.area)}
                     </td>
-                    <td className="py-2 px-3 text-right text-gray-600">{row.yieldPerHa}</td>
+                    <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{row.yieldPerHa}</td>
                   </tr>
                 ))}
               </tbody>

@@ -2,26 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Smooth theme transitions */
-*, *::before, *::after {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: 150ms;
-  transition-timing-function: ease;
+/* Smooth theme-switch transitions — only on background/border/color, not layout */
+html {
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  @apply bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100;
+  @apply bg-gray-50 text-gray-900;
 }
 
+.dark body {
+  @apply bg-gray-950 text-gray-100;
+}
+
+/* Cards, panels */
+.card {
+  @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm;
+}
+
+/* Leaflet map */
 .leaflet-container {
   height: 100%;
   width: 100%;
   border-radius: 0.5rem;
 }
 
-/* Dark mode Leaflet popup */
+/* Leaflet popup — light mode */
+.leaflet-popup-content-wrapper {
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.leaflet-popup-tip {
+  background: #ffffff;
+}
+
+/* Leaflet popup — dark mode */
 .dark .leaflet-popup-content-wrapper {
   background: #1f2937;
   color: #f3f4f6;
@@ -32,4 +52,9 @@ body {
 }
 .dark .leaflet-popup-close-button {
   color: #9ca3af !important;
+}
+
+/* Recharts tooltip fix — ensure light mode is clean */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  border-radius: 8px !important;
 }

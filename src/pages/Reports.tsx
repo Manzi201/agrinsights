@@ -161,7 +161,7 @@ export default function Reports() {
             </label>
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-2 max-h-40 overflow-y-auto space-y-1 bg-white dark:bg-gray-700">
               {districts.map((d) => (
-                <label key={d.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 px-1 py-0.5 rounded">
+                <label key={d.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600/50 px-1 py-0.5 rounded">
                   <input
                     type="checkbox"
                     checked={selectedDistricts.includes(d.id)}
@@ -182,7 +182,7 @@ export default function Reports() {
             </label>
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-2 space-y-1 bg-white dark:bg-gray-700">
               {crops.map((c) => (
-                <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 px-1 py-0.5 rounded">
+                <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600/50 px-1 py-0.5 rounded">
                   <input
                     type="checkbox"
                     checked={selectedCrops.includes(c.id)}
@@ -250,7 +250,7 @@ export default function Reports() {
           <button
             onClick={handleCSVExport}
             disabled={reportData.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <FileText className="w-4 h-4" />
             Export CSV
@@ -266,7 +266,7 @@ export default function Reports() {
         </div>
 
         {/* Report meta */}
-        <div className="text-sm text-gray-500 mb-4">
+        <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           <p>
             Districts: {selectedDistricts.length === 0 ? 'All Rwanda (30 districts)' : selectedDistricts.map((id) => getDistrictById(id)?.name).join(', ')}
           </p>
@@ -321,15 +321,15 @@ export default function Reports() {
                   <tbody>
                     {byCropSummary.map((row) => (
                       <tr key={row.cropId} className="border-b border-gray-100 dark:border-gray-700">
-                        <td className="py-2 px-3 text-gray-700">
+                        <td className="py-2 px-3 text-gray-700 dark:text-gray-200">
                           <span className="inline-flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: crops.find((c) => c.id === row.cropId)?.color }} />
                             {row.cropName}
                           </span>
                         </td>
-                        <td className="py-2 px-3 text-right font-medium">{formatNumber(row.production)}</td>
-                        <td className="py-2 px-3 text-right text-gray-600">{formatNumber(row.area)}</td>
-                        <td className="py-2 px-3 text-right text-gray-600">{row.yield}</td>
+                        <td className="py-2 px-3 text-right font-medium text-gray-900 dark:text-white">{formatNumber(row.production)}</td>
+                        <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.area)}</td>
+                        <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{row.yield}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -354,11 +354,11 @@ export default function Reports() {
                   <tbody>
                     {byDistrictSummary.slice(0, 15).map((row) => (
                       <tr key={row.districtId} className="border-b border-gray-100 dark:border-gray-700">
-                        <td className="py-2 px-3 text-gray-700">{row.districtName}</td>
-                        <td className="py-2 px-3 text-gray-500">{row.province}</td>
-                        <td className="py-2 px-3 text-right font-medium">{formatNumber(row.production)}</td>
-                        <td className="py-2 px-3 text-right text-gray-600">{formatNumber(row.area)}</td>
-                        <td className="py-2 px-3 text-right text-gray-600">{row.yield}</td>
+                        <td className="py-2 px-3 text-gray-700 dark:text-gray-200">{row.districtName}</td>
+                        <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{row.province}</td>
+                        <td className="py-2 px-3 text-right font-medium text-gray-900 dark:text-white">{formatNumber(row.production)}</td>
+                        <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.area)}</td>
+                        <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{row.yield}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -386,8 +386,8 @@ export default function Reports() {
                   <tbody>
                     {yearComparison.map((row) => (
                       <tr key={row.year} className="border-b border-gray-100 dark:border-gray-700">
-                        <td className="py-2 px-3 text-gray-700">{row.year}</td>
-                        <td className="py-2 px-3 text-right font-medium">{formatNumber(row.production)}</td>
+                        <td className="py-2 px-3 text-gray-700 dark:text-gray-200">{row.year}</td>
+                        <td className="py-2 px-3 text-right font-medium text-gray-900 dark:text-white">{formatNumber(row.production)}</td>
                         <td className={`py-2 px-3 text-right font-medium ${row.change > 0 ? 'text-green-600' : row.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                           {row.change > 0 ? '+' : ''}{row.change}%
                         </td>

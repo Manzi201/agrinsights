@@ -61,37 +61,37 @@ export default function Insights() {
     <div>
       {/* Filter bar */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 mb-4 sm:mb-6">
-        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700">
+        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
           <Filter className="w-4 h-4" /> Filters
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col flex-1 min-w-[140px]">
-            <label className="text-xs text-gray-500 font-medium mb-1">Crop</label>
+            <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Crop</label>
             <select value={cropId} onChange={(e) => setCropId(e.target.value)}
               className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full">
               {crops.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="flex flex-col">
-            <label className="text-xs text-gray-500 font-medium mb-1">Season</label>
-            <div className="flex rounded-lg overflow-hidden border border-gray-300">
+            <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Season</label>
+            <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
               {(['A', 'B', 'C'] as Season[]).map((s) => (
                 <button key={s} onClick={() => setSeason(s)}
-                  className={`px-3 py-2 text-sm font-medium ${season === s ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                  className={`px-3 py-2 text-sm font-medium ${season === s ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'}`}>
                   {s}
                 </button>
               ))}
             </div>
           </div>
           <div className="flex flex-col">
-            <label className="text-xs text-gray-500 font-medium mb-1">Year</label>
+            <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Year</label>
             <select value={year} onChange={(e) => setYear(Number(e.target.value))}
               className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
           <div className="flex flex-col">
-            <label className="text-xs text-gray-500 font-medium mb-1">Severity</label>
+            <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Severity</label>
             <select value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value as InsightType | 'all')}
               className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
               <option value="all">All</option>
@@ -104,10 +104,10 @@ export default function Insights() {
         </div>
         <div className="flex flex-wrap gap-2 mt-3">
           {([
-            { key: 'critical', label: 'Critical', color: 'text-red-600 bg-red-50' },
-            { key: 'warning', label: 'Warning', color: 'text-amber-600 bg-amber-50' },
-            { key: 'positive', label: 'Positive', color: 'text-green-600 bg-green-50' },
-            { key: 'info', label: 'Info', color: 'text-blue-600 bg-blue-50' },
+            { key: 'critical', label: 'Critical', color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30' },
+            { key: 'warning', label: 'Warning', color: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30' },
+            { key: 'positive', label: 'Positive', color: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30' },
+            { key: 'info', label: 'Info', color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' },
           ] as const).map((s) => (
             <div key={s.key} className={`px-2 py-1 rounded-lg text-xs font-medium ${s.color}`}>
               {s.label}: {severityCounts[s.key] ?? 0}
