@@ -151,17 +151,17 @@ export default function Reports() {
     <div>
       {/* Configuration form */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5 mb-4 sm:mb-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">Report Configuration — Igena raporo</h3>
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">Report Configuration</h3>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {/* Districts */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-2 block">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">
               Districts (empty = all)
             </label>
-            <div className="border border-gray-200 rounded-lg p-2 max-h-40 overflow-y-auto space-y-1">
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-2 max-h-40 overflow-y-auto space-y-1 bg-white dark:bg-gray-700">
               {districts.map((d) => (
-                <label key={d.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-1 py-0.5 rounded">
+                <label key={d.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 px-1 py-0.5 rounded">
                   <input
                     type="checkbox"
                     checked={selectedDistricts.includes(d.id)}
@@ -169,7 +169,7 @@ export default function Reports() {
                     className="w-4 h-4 rounded accent-primary-600"
                   />
                   <span className="text-gray-700 dark:text-gray-200">{d.name}</span>
-                  <span className="text-xs text-gray-400">{d.province}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-400">{d.province}</span>
                 </label>
               ))}
             </div>
@@ -177,12 +177,12 @@ export default function Reports() {
 
           {/* Crops */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-2 block">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">
               Crops (empty = all)
             </label>
-            <div className="border border-gray-200 rounded-lg p-2 space-y-1">
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-2 space-y-1 bg-white dark:bg-gray-700">
               {crops.map((c) => (
-                <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-1 py-0.5 rounded">
+                <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 px-1 py-0.5 rounded">
                   <input
                     type="checkbox"
                     checked={selectedCrops.includes(c.id)}
@@ -198,7 +198,7 @@ export default function Reports() {
 
           {/* Seasons */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-2 block">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">
               Seasons (empty = all)
             </label>
             <div className="space-y-2">
@@ -218,7 +218,7 @@ export default function Reports() {
 
           {/* Years */}
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-2 block">
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">
               Years (empty = all)
             </label>
             <div className="space-y-2">
@@ -281,21 +281,21 @@ export default function Reports() {
 
         {/* Summary stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="bg-primary-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500">Total Production</p>
-            <p className="text-lg font-bold text-primary-700">{formatNumber(summary.totalProduction)} t</p>
+          <div className="bg-primary-50 dark:bg-primary-900/30 rounded-lg p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Total Production</p>
+            <p className="text-lg font-bold text-primary-700 dark:text-primary-300">{formatNumber(summary.totalProduction)} t</p>
           </div>
-          <div className="bg-amber-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500">Total Area</p>
-            <p className="text-lg font-bold text-amber-700">{formatNumber(summary.totalArea)} ha</p>
+          <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Total Area</p>
+            <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{formatNumber(summary.totalArea)} ha</p>
           </div>
-          <div className="bg-blue-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500">Average Yield</p>
-            <p className="text-lg font-bold text-blue-700">{summary.avgYield} t/ha</p>
+          <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Average Yield</p>
+            <p className="text-lg font-bold text-blue-700 dark:text-blue-300">{summary.avgYield} t/ha</p>
           </div>
-          <div className="bg-purple-50 rounded-lg p-3">
-            <p className="text-xs text-gray-500">Data Records</p>
-            <p className="text-lg font-bold text-purple-700">{formatNumber(summary.recordCount)}</p>
+          <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Data Records</p>
+            <p className="text-lg font-bold text-purple-700 dark:text-purple-300">{formatNumber(summary.recordCount)}</p>
           </div>
         </div>
 

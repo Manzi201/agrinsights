@@ -68,8 +68,8 @@ export default function Insights() {
           <div className="flex flex-col flex-1 min-w-[140px]">
             <label className="text-xs text-gray-500 font-medium mb-1">Crop</label>
             <select value={cropId} onChange={(e) => setCropId(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full">
-              {crops.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.nameKinyarwanda})</option>)}
+              className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full">
+              {crops.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="flex flex-col">
@@ -86,14 +86,14 @@ export default function Insights() {
           <div className="flex flex-col">
             <label className="text-xs text-gray-500 font-medium mb-1">Year</label>
             <select value={year} onChange={(e) => setYear(Number(e.target.value))}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+              className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
           <div className="flex flex-col">
             <label className="text-xs text-gray-500 font-medium mb-1">Severity</label>
             <select value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value as InsightType | 'all')}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+              className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
               <option value="all">All</option>
               <option value="critical">Critical</option>
               <option value="warning">Warning</option>
@@ -142,12 +142,12 @@ export default function Insights() {
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex items-center gap-2">
             <Lightbulb className="w-4 h-4 text-primary-600" />
-            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Detailed District Report:</span>
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Detailed District Report</span>
           </div>
           <select
             value={aiDistrictId}
             onChange={(e) => setAiDistrictId(e.target.value)}
-            className="flex-1 min-w-[160px] px-3 py-1.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="flex-1 min-w-[160px] px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             {districts.map((d) => (
               <option key={d.id} value={d.id}>{d.name} ({d.province})</option>
@@ -157,8 +157,8 @@ export default function Insights() {
         <AIAnalysisPanel input={aiInput} />
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-blue-800">
-        Ibisobanuro bigaragara hano bishingiye ku makuru ya NISR Rwanda. Imibare ikoreshwa ikubiyemo ubuso buhingwa, umusaruro, n'umusaruro kuri hegitari. Raporo ntizemeza impamvu z'ikibazo zitabanje kugira amakuru ayishyigikira.
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 sm:p-4 text-xs sm:text-sm text-blue-800 dark:text-blue-300">
+        Insights are generated from NISR Rwanda agricultural data and reflect actual production figures including cultivated area, output, and yield per hectare. Reported findings do not assume the cause of a change without supporting data.
       </div>
     </div>
   );

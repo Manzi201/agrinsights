@@ -70,7 +70,7 @@ export default function CropComparison() {
         {/* Crop selection */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            Select Crops (up to 4) — Hitamo ibihingwa
+            Select Crops (up to 4)
           </h3>
           <div className="flex flex-wrap gap-2">
             {crops.map((crop) => {
@@ -100,7 +100,7 @@ export default function CropComparison() {
         {/* District selection */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            Select Districts (up to 4) — Hitamo uturere
+            Select Districts (up to 4)
           </h3>
           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
             {districts.map((d) => {
@@ -128,14 +128,14 @@ export default function CropComparison() {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 mb-4 sm:mb-6">
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex flex-col">
-            <label className="text-xs text-gray-500 font-medium mb-1">Season / Igihe</label>
-            <div className="flex rounded-lg overflow-hidden border border-gray-300">
+            <label className="text-xs text-gray-500 font-medium mb-1">Season</label>
+            <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
               {(['A', 'B', 'C'] as Season[]).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSeason(s)}
                   className={`px-4 py-2 text-sm font-medium ${
-                    season === s ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                    season === s ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
                   }`}
                 >
                   Season {s}
@@ -144,11 +144,11 @@ export default function CropComparison() {
             </div>
           </div>
           <div className="flex flex-col">
-            <label className="text-xs text-gray-500 font-medium mb-1">Year / Umwaka</label>
+            <label className="text-xs text-gray-500 font-medium mb-1">Year</label>
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               {years.map((y) => (
                 <option key={y} value={y}>{y}</option>

@@ -116,7 +116,7 @@ export default function AIAnalysisPanel({ input }: AIAnalysisPanelProps) {
             <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-100 dark:border-green-800">
               <div className="flex items-center gap-1.5 mb-2">
                 <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                <span className="text-xs font-semibold text-green-800 dark:text-green-300">Umusaruro mwiza</span>
+                <span className="text-xs font-semibold text-green-800 dark:text-green-300">Strengths</span>
               </div>
               <ul className="space-y-1.5">
                 {analysis.strengths.map((s, i) => (
@@ -129,7 +129,7 @@ export default function AIAnalysisPanel({ input }: AIAnalysisPanelProps) {
             <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-100 dark:border-amber-800">
               <div className="flex items-center gap-1.5 mb-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Ibikenewe gutekereza</span>
+                <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Concerns</span>
               </div>
               <ul className="space-y-1.5">
                 {analysis.concerns.map((c, i) => (
@@ -142,7 +142,7 @@ export default function AIAnalysisPanel({ input }: AIAnalysisPanelProps) {
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-100 dark:border-blue-800">
               <div className="flex items-center gap-1.5 mb-2">
                 <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">Ingamba zishyirwaho</span>
+                <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">Recommendations</span>
               </div>
               <ul className="space-y-1.5">
                 {analysis.recommendations.map((r, i) => (

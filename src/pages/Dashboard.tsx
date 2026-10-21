@@ -130,11 +130,11 @@ export default function Dashboard() {
       {/* District Analysis panel */}
       <div className="mb-4 sm:mb-6">
         <div className="flex flex-wrap items-center gap-3 mb-3">
-          <label className="text-xs font-semibold text-gray-600">District Report:</label>
+          <label className="text-xs font-semibold text-gray-600">District Report</label>
           <select
             value={selectedDistrict}
             onChange={(e) => setSelectedDistrict(e.target.value)}
-            className="px-2 py-1.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="px-2 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             {districts.map((d) => (
               <option key={d.id} value={d.id}>{d.name} ({d.province})</option>
