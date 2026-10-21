@@ -150,7 +150,7 @@ export default function Reports() {
   return (
     <div>
       {/* Configuration form */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-5 mb-4 sm:mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5 mb-4 sm:mb-6">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">Report Configuration — Igena raporo</h3>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -168,7 +168,7 @@ export default function Reports() {
                     onChange={() => toggle(selectedDistricts, d.id, setSelectedDistricts)}
                     className="w-4 h-4 rounded accent-primary-600"
                   />
-                  <span className="text-gray-700">{d.name}</span>
+                  <span className="text-gray-700 dark:text-gray-200">{d.name}</span>
                   <span className="text-xs text-gray-400">{d.province}</span>
                 </label>
               ))}
@@ -190,7 +190,7 @@ export default function Reports() {
                     className="w-4 h-4 rounded accent-primary-600"
                   />
                   <span className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
-                  <span className="text-gray-700">{c.name}</span>
+                  <span className="text-gray-700 dark:text-gray-200">{c.name}</span>
                 </label>
               ))}
             </div>
@@ -210,7 +210,7 @@ export default function Reports() {
                     onChange={() => toggle(selectedSeasons, s, setSelectedSeasons)}
                     className="w-4 h-4 rounded accent-primary-600"
                   />
-                  <span className="text-gray-700">Season {s}</span>
+                  <span className="text-gray-700 dark:text-gray-200">Season {s}</span>
                 </label>
               ))}
             </div>
@@ -230,7 +230,7 @@ export default function Reports() {
                     onChange={() => toggle(selectedYears, y, setSelectedYears)}
                     className="w-4 h-4 rounded accent-primary-600"
                   />
-                  <span className="text-gray-700">{y}</span>
+                  <span className="text-gray-700 dark:text-gray-200">{y}</span>
                 </label>
               ))}
             </div>
@@ -238,7 +238,7 @@ export default function Reports() {
         </div>
 
         {/* Export buttons */}
-        <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
+        <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
           <button
             onClick={handlePDFExport}
             disabled={exporting || reportData.length === 0}
@@ -259,10 +259,10 @@ export default function Reports() {
       </div>
 
       {/* Report preview */}
-      <div ref={reportRef} className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-6">
+      <div ref={reportRef} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Printer className="w-5 h-5 text-primary-600" />
-          <h3 className="text-lg font-bold text-gray-900">Agricultural Report Preview</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Agricultural Report Preview</h3>
         </div>
 
         {/* Report meta */}
@@ -311,16 +311,16 @@ export default function Reports() {
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Production by Crop</h4>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Crop</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Production (t)</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Area (ha)</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Yield (t/ha)</th>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Crop</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Production (t)</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Area (ha)</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Yield (t/ha)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {byCropSummary.map((row) => (
-                      <tr key={row.cropId} className="border-b border-gray-100">
+                      <tr key={row.cropId} className="border-b border-gray-100 dark:border-gray-700">
                         <td className="py-2 px-3 text-gray-700">
                           <span className="inline-flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: crops.find((c) => c.id === row.cropId)?.color }} />
@@ -343,17 +343,17 @@ export default function Reports() {
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Production by District</h4>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">District</th>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Province</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Production (t)</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Area (ha)</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Yield (t/ha)</th>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">District</th>
+                      <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Province</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Production (t)</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Area (ha)</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Yield (t/ha)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {byDistrictSummary.slice(0, 15).map((row) => (
-                      <tr key={row.districtId} className="border-b border-gray-100">
+                      <tr key={row.districtId} className="border-b border-gray-100 dark:border-gray-700">
                         <td className="py-2 px-3 text-gray-700">{row.districtName}</td>
                         <td className="py-2 px-3 text-gray-500">{row.province}</td>
                         <td className="py-2 px-3 text-right font-medium">{formatNumber(row.production)}</td>
@@ -377,15 +377,15 @@ export default function Reports() {
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">Year Comparison</h4>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Year</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Production (t)</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Change (%)</th>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Year</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Production (t)</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Change (%)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {yearComparison.map((row) => (
-                      <tr key={row.year} className="border-b border-gray-100">
+                      <tr key={row.year} className="border-b border-gray-100 dark:border-gray-700">
                         <td className="py-2 px-3 text-gray-700">{row.year}</td>
                         <td className="py-2 px-3 text-right font-medium">{formatNumber(row.production)}</td>
                         <td className={`py-2 px-3 text-right font-medium ${row.change > 0 ? 'text-green-600' : row.change < 0 ? 'text-red-600' : 'text-gray-500'}`}>

@@ -68,7 +68,7 @@ export default function CropComparison() {
       {/* Selection panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
         {/* Crop selection */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-5">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">
             Select Crops (up to 4) — Hitamo ibihingwa
           </h3>
@@ -98,7 +98,7 @@ export default function CropComparison() {
         </div>
 
         {/* District selection */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-5">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">
             Select Districts (up to 4) — Hitamo uturere
           </h3>
@@ -125,7 +125,7 @@ export default function CropComparison() {
       </div>
 
       {/* Season & Year selectors */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 mb-4 sm:mb-6">
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex flex-col">
             <label className="text-xs text-gray-500 font-medium mb-1">Season / Igihe</label>
@@ -159,7 +159,7 @@ export default function CropComparison() {
       </div>
 
       {selectedCrops.length === 0 || selectedDistricts.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl border border-gray-200 p-12 text-center text-gray-500">
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-500">
           Select at least one crop and one district to see the comparison.
         </div>
       ) : (
@@ -171,7 +171,7 @@ export default function CropComparison() {
 
           {/* Year trend chart for first selected district */}
           {selectedDistricts.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-5 mb-4 sm:mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5 mb-4 sm:mb-6">
               <h3 className="text-sm font-semibold text-gray-700 mb-4">
                 Year-over-Year Trend — {districts.find((d) => d.id === selectedDistricts[0])?.name ?? ''}
               </h3>
@@ -207,23 +207,23 @@ export default function CropComparison() {
           )}
 
           {/* Comparison table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-5 overflow-x-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5 overflow-x-auto">
             <h3 className="text-sm font-semibold text-gray-700 mb-4">
               Comparison Table — Season {season} {year}
             </h3>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3 font-semibold text-gray-700">District</th>
-                  <th className="text-left py-2 px-3 font-semibold text-gray-700">Crop</th>
-                  <th className="text-right py-2 px-3 font-semibold text-gray-700">Production (t)</th>
-                  <th className="text-right py-2 px-3 font-semibold text-gray-700">Area (ha)</th>
-                  <th className="text-right py-2 px-3 font-semibold text-gray-700">Yield (t/ha)</th>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">District</th>
+                  <th className="text-left py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">Crop</th>
+                  <th className="text-right py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">Production (t)</th>
+                  <th className="text-right py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">Area (ha)</th>
+                  <th className="text-right py-2 px-3 font-semibold text-gray-700 dark:text-gray-300">Yield (t/ha)</th>
                 </tr>
               </thead>
               <tbody>
                 {tableData.map((row, i) => (
-                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 dark:bg-gray-700">
                     <td className="py-2 px-3 text-gray-700">{row.districtName}</td>
                     <td className="py-2 px-3">
                       <span className="inline-flex items-center gap-1.5">
@@ -234,7 +234,7 @@ export default function CropComparison() {
                         {row.cropName}
                       </span>
                     </td>
-                    <td className="py-2 px-3 text-right font-medium text-gray-900">
+                    <td className="py-2 px-3 text-right font-medium text-gray-900 dark:text-white">
                       {formatNumber(row.production)}
                     </td>
                     <td className="py-2 px-3 text-right text-gray-600">

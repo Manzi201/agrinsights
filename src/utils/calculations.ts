@@ -43,7 +43,7 @@ export function getProductionByDistrict(cropId: string, season: Season, year: nu
     }
   }
 
-  for (const [, val] of byDistrict) {
+  for (const [, val] of Array.from(byDistrict)) {
     val.yieldPerHa = val.area > 0 ? Math.round((val.production / val.area) * 100) / 100 : 0;
     val.production = Math.round(val.production);
     val.area = Math.round(val.area);

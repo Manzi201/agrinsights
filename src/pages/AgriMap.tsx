@@ -53,7 +53,7 @@ export default function AgriMap() {
         onYearChange={setYear}
       />
 
-      <div className="mb-3 bg-primary-50 border border-primary-200 rounded-lg p-3 text-xs sm:text-sm text-primary-800">
+      <div className="mb-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-3 text-xs sm:text-sm text-primary-800 dark:text-primary-200">
         Showing <strong>{crop?.name ?? 'Maize'}</strong> · Season <strong>{season} {year}</strong>.
         Click a district circle to view production details and district report.
       </div>

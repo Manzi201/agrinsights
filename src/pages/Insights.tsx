@@ -60,7 +60,7 @@ export default function Insights() {
   return (
     <div>
       {/* Filter bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-4 sm:mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 mb-4 sm:mb-6">
         <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700">
           <Filter className="w-4 h-4" /> Filters
         </div>
@@ -126,7 +126,7 @@ export default function Insights() {
       </div>
 
       {filteredInsights.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl border border-gray-200 p-10 text-center text-gray-500 text-sm mb-6">
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-10 text-center text-gray-500 text-sm mb-6">
           No insights found. Try changing the crop, season, or year.
         </div>
       ) : (
@@ -138,11 +138,11 @@ export default function Insights() {
       )}
 
       {/* District Deep Dive section */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 mb-4">
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex items-center gap-2">
             <Lightbulb className="w-4 h-4 text-primary-600" />
-            <span className="text-sm font-semibold text-gray-700">Detailed District Report:</span>
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Detailed District Report:</span>
           </div>
           <select
             value={aiDistrictId}

@@ -91,7 +91,7 @@ export function MobileMenuButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="lg:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+      className="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       aria-label="Open menu"
     >
       <Menu className="w-5 h-5" />
