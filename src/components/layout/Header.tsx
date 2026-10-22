@@ -10,6 +10,7 @@ const pageTitles: Record<string, { title: string; subtitle: string }> = {
   '/map': { title: 'Agricultural Map', subtitle: 'Explore production by district' },
   '/comparison': { title: 'Crop Comparison', subtitle: 'Compare crops and districts' },
   '/insights': { title: 'Insights', subtitle: 'Data-driven analysis' },
+  '/solutions': { title: 'Solutions', subtitle: 'Data-informed solutions for Rwanda agriculture' },
   '/reports': { title: 'Reports', subtitle: 'Generate and export reports' },
 };
 

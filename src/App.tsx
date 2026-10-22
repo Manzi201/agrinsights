@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import AgriMap from './pages/AgriMap';
 import CropComparison from './pages/CropComparison';
 import Insights from './pages/Insights';
+import Solutions from './pages/Solutions';
 import Reports from './pages/Reports';
 import { initNisrConnection } from './services/nisr';
 
@@ -32,6 +33,7 @@ function App() {
           <Route path="/map" element={<AgriMap />} />
           <Route path="/comparison" element={<CropComparison />} />
           <Route path="/insights" element={<Insights />} />
+          <Route path="/solutions" element={<Solutions />} />
           <Route path="/reports" element={<Reports />} />
         </Route>
       </Routes>
