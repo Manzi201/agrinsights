@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: agrinsights
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: VITE_DATAGOV_API_KEY
+        sync: false
+      - key: VITE_MISTRAL_API_KEY
+        sync: false

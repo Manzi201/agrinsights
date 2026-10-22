@@ -7,7 +7,8 @@
 // then falls back to a local data-driven analysis so users always get a result.
 // ---------------------------------------------------------------------------
 
-const MISTRAL_API_URL = '/api/mistral/v1/chat/completions';
+import { MISTRAL_API_URL } from '../config/api';
+
 const MISTRAL_MODEL = 'mistral-small-latest';
 
 export interface MistralAnalysis {
