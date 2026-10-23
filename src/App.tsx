@@ -9,8 +9,9 @@ import Solutions from './pages/Solutions';
 import CashCrops from './pages/CashCrops';
 import Reports from './pages/Reports';
 import { initNisrConnection } from './services/nisr';
+import { ThemeProvider } from './context/ThemeContext';
 
-function App() {
+function AppContent() {
   const [apiReady, setApiReady] = useState(false);
 
   useEffect(() => {
@@ -40,6 +41,14 @@ function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

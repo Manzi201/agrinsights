@@ -1,0 +1,30 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "zero-production-routing",
+      "severity": "HIGH",
+      "title": "Zero-production districts in bottom-5 routing",
+      "description": "computeRoutingData uses sorted.slice(-5) from all 30 districts. For narrow crops, districts with production=0 always occupy the bottom slice, producing routing rows for districts that never grow the selected crop. Fix: filter production > 0 before slicing, or add a status column distinguishing 'not grown here' from 'undersupplied'."
+    },
+    {
+      "id": "prediction-tooltip-bug",
+      "severity": "HIGH",
+      "title": "Prediction chart Tooltip formatter never fires for yield",
+      "description": "The Tooltip formatter checks `name === 'Yield ×100'` but the recharts `name` parameter is the dataKey ('Current' or 'Projected'), not the metric label. The condition is never true, so yield always displays as the raw ×100 integer (e.g. 847) instead of 8.47 t/ha. Fix: use a secondary Y-axis for yield, or show yield as a stat card outside the grouped BarChart."
+    },
+    {
+      "id": "yield-100-bar-label",
+      "severity": "MEDIUM",
+      "title": "Prediction chart Yield ×100 encoding confuses users",
+      "description": "Yield is multiplied by 100 to plot on the same axis as production and area. Even if the tooltip were fixed, the bar labeled 'Yield ×100' displaying 847 while the tooltip says 8.47 t/ha will confuse reviewers. Use a dedicated stat card or secondary axis for yield."
+    },
+    {
+      "id": "opportunity-count-double-compute",
+      "severity": "LOW",
+      "title": "Opportunity Finder filter-count double computation",
+      "description": "Each filter button calls cards.filter(...).length inline in JSX on every render. Derive counts into a useMemo map keyed by tag."
+    }
+  ],
+  "reviewDoc": "e:\\Project\\Agrinsights app\\.agents\\tasks\\solutions-review.md"
+}
