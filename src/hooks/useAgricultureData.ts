@@ -56,7 +56,7 @@ export function useDataVersion(): number {
 export function useFilters(initial?: Partial<Filters>) {
   const [cropId, setCropId] = useState(initial?.cropId ?? 'maize');
   const [season, setSeason] = useState<Filters['season']>(initial?.season ?? 'A');
-  const [year, setYear] = useState(initial?.year ?? 2024);
+  const [year, setYear] = useState(initial?.year ?? 2023);
 
   const filters = useMemo(() => ({ cropId, season, year }), [cropId, season, year]);
 

@@ -67,7 +67,9 @@ export const crops: Crop[] = [
 
 // Seasons and year range covered by NISR PXWeb data
 export const seasons: Season[] = ['A', 'B', 'C'];
-export const years: number[] = [2023]; // NISR PXWeb currently covers Season A+B 2023
+// NISR PXWeb currently covers Season A and B for 2023
+// Year list shown in filter selectors — only years with actual API data
+export const years: number[] = [2023];
 
 // ---------------------------------------------------------------------------
 // Live data store — populated exclusively from NISR API calls in nisr.ts
@@ -96,8 +98,9 @@ export function clearData(): void {
   _dataStore = [];
 }
 
-// Backward-compat export — always reflects live store
-export const agricultureData: DataPoint[] = _dataStore;
+// Backward-compat: use getAllData() everywhere; this is kept only for imports that haven't been updated
+// NOTE: This is NOT a live reference — always call getAllData() for current data
+export function getAgricultureData(): DataPoint[] { return _dataStore; }
 
 // ---------------------------------------------------------------------------
 // Reference lookups
