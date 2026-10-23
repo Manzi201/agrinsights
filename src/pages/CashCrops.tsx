@@ -1,16 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, ReferenceLine,
+  LineChart, Line, BarChart, Bar, Cell, ComposedChart,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { Coffee, Leaf, TrendingUp, TrendingDown, RefreshCw, Wifi } from 'lucide-react';
+import { Coffee, Leaf, TrendingUp, TrendingDown, RefreshCw, Wifi, LandPlot } from 'lucide-react';
 import {
   fetchCashCropData,
   fetchFullYieldTable,
+  fetchCashCropAreaData,
   getCashCropChartData,
   getCashCropStats,
+  getCashCropAreaChartData,
   type CashCropDataPoint,
   type LiveYieldPoint,
+  type CashCropAreaPoint,
 } from '../services/cashCrops';
 import { useTheme } from '../context/ThemeContext';
 import { formatNumber } from '../utils/calculations';
@@ -77,20 +80,22 @@ function StatCard({
 export default function CashCrops() {
   const [cashData, setCashData] = useState<CashCropDataPoint[]>([]);
   const [yieldData, setYieldData] = useState<LiveYieldPoint[]>([]);
+  const [areaData, setAreaData] = useState<CashCropAreaPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'coffee' | 'tea' | 'yield'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'coffee' | 'tea' | 'land' | 'yield'>('overview');
   const cs = useChartStyle();
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([fetchCashCropData(), fetchFullYieldTable()])
-      .then(([cash, yield_]) => {
+    Promise.all([fetchCashCropData(), fetchFullYieldTable(), fetchCashCropAreaData()])
+      .then(([cash, yield_, area]) => {
         if (cancelled) return;
         setCashData(cash);
         setYieldData(yield_);
+        setAreaData(area);
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load data');
@@ -102,6 +107,10 @@ export default function CashCrops() {
   const chartData = useMemo(() => getCashCropChartData(cashData), [cashData]);
   const coffeeStats = useMemo(() => getCashCropStats(cashData, 'Coffee'), [cashData]);
   const teaStats = useMemo(() => getCashCropStats(cashData, 'Tea'), [cashData]);
+
+  // Land area chart data for both crops
+  const coffeeAreaChartData = useMemo(() => getCashCropAreaChartData(areaData, 'Coffee'), [areaData]);
+  const teaAreaChartData = useMemo(() => getCashCropAreaChartData(areaData, 'Tea'), [areaData]);
 
   // Build yield heatmap data from live NISR yield table
   const yieldTableData = useMemo(() => {
@@ -154,6 +163,7 @@ export default function CashCrops() {
     { id: 'overview' as const, label: 'Overview', icon: <TrendingUp className="w-4 h-4" /> },
     { id: 'coffee' as const, label: 'Coffee', icon: <Coffee className="w-4 h-4" /> },
     { id: 'tea' as const, label: 'Tea', icon: <Leaf className="w-4 h-4" /> },
+    { id: 'land' as const, label: 'Land Area', icon: <LandPlot className="w-4 h-4" /> },
     { id: 'yield' as const, label: 'Live Yield Table', icon: <Wifi className="w-4 h-4" /> },
   ];
 
@@ -408,6 +418,128 @@ export default function CashCrops() {
                           <td className={`py-2 text-right text-xs font-medium ${change === null ? 'text-gray-400' : change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                             {change === null ? '—' : `${change > 0 ? '+' : ''}${change.toFixed(1)}%`}
                           </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── Land Area ── */}
+          {activeTab === 'land' && (
+            <div className="space-y-6">
+              {/* Source banner */}
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-300">
+                <p className="font-semibold mb-1">Land area under production — Source: NISR <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded text-xs">_cashcrop.px</code></p>
+                <p className="text-xs">Values in '000 hectares · 2014–2020. Compares <strong>total registered area</strong> vs <strong>area actually under production</strong> to reveal utilization efficiency.</p>
+              </div>
+
+              {/* Summary stat cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: 'Coffee total area (2020)', value: '40', unit: "'000 ha", color: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-300' },
+                  { label: 'Coffee utilization rate', value: '~83%', unit: '(2018)', color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800', text: 'text-orange-700 dark:text-orange-300' },
+                  { label: 'Tea total area (2020)', value: '24', unit: "'000 ha", color: 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800', text: 'text-teal-700 dark:text-teal-300' },
+                  { label: 'Tea utilization rate', value: '88%', unit: '(2020)', color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800', text: 'text-green-700 dark:text-green-300' },
+                ].map((s) => (
+                  <div key={s.label} className={`rounded-xl border p-4 ${s.color}`}>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{s.label}</p>
+                    <p className={`text-xl font-bold ${s.text}`}>{s.value} <span className="text-sm font-normal">{s.unit}</span></p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Coffee area chart */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">
+                  Coffee — Total Area vs Under Production ('000 ha)
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                  Area dropped sharply in 2015 (55k→36k ha) likely due to reclassification. Utilization improved in 2018.
+                </p>
+                <div style={{ height: 280 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={coffeeAreaChartData} margin={{ top: 5, right: 30, bottom: 5, left: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={cs.grid} />
+                      <XAxis dataKey="year" tick={{ fontSize: 12, fill: cs.axis }} stroke={cs.axis} />
+                      <YAxis yAxisId="left" tick={{ fontSize: 11, fill: cs.axis }} stroke={cs.axis} tickFormatter={(v) => `${v}k`} />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: cs.axis }} stroke={cs.axis} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
+                      <Tooltip
+                        contentStyle={cs.tt}
+                        formatter={(v, name) => {
+                          if (name === 'Utilization %') return [`${v}%`, name];
+                          return [v !== null ? `${v}k ha` : 'N/A', name as string];
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12, color: cs.isDark ? '#9ca3af' : undefined }} />
+                      <Bar yAxisId="left" dataKey="Total area" fill="#d97706" radius={[4, 4, 0, 0]} opacity={0.6} />
+                      <Bar yAxisId="left" dataKey="Under production" fill="#b45309" radius={[4, 4, 0, 0]} />
+                      <Line yAxisId="right" type="monotone" dataKey="Utilization %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} connectNulls={false} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Tea area chart */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">
+                  Tea — Total Area vs Under Production ('000 ha)
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                  Tea utilization rate has improved consistently — from 68% (2014) to 88% (2020), showing stronger land management.
+                </p>
+                <div style={{ height: 280 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={teaAreaChartData} margin={{ top: 5, right: 30, bottom: 5, left: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={cs.grid} />
+                      <XAxis dataKey="year" tick={{ fontSize: 12, fill: cs.axis }} stroke={cs.axis} />
+                      <YAxis yAxisId="left" tick={{ fontSize: 11, fill: cs.axis }} stroke={cs.axis} tickFormatter={(v) => `${v}k`} />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: cs.axis }} stroke={cs.axis} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
+                      <Tooltip
+                        contentStyle={cs.tt}
+                        formatter={(v, name) => {
+                          if (name === 'Utilization %') return [`${v}%`, name];
+                          return [v !== null ? `${v}k ha` : 'N/A', name as string];
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12, color: cs.isDark ? '#9ca3af' : undefined }} />
+                      <Bar yAxisId="left" dataKey="Total area" fill="#0d9488" radius={[4, 4, 0, 0]} opacity={0.6} />
+                      <Bar yAxisId="left" dataKey="Under production" fill="#0f766e" radius={[4, 4, 0, 0]} />
+                      <Line yAxisId="right" type="monotone" dataKey="Utilization %" stroke="#14b8a6" strokeWidth={2} dot={{ r: 4 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Raw data table */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 overflow-x-auto">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Full Land Area Dataset</h3>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-left py-2 px-2 font-semibold text-gray-600 dark:text-gray-300">Year</th>
+                      <th className="text-right py-2 px-2 font-semibold text-amber-700 dark:text-amber-400">Coffee Total ('000 ha)</th>
+                      <th className="text-right py-2 px-2 font-semibold text-orange-700 dark:text-orange-400">Coffee Active ('000 ha)</th>
+                      <th className="text-right py-2 px-2 font-semibold text-gray-500 dark:text-gray-400">Coffee Util%</th>
+                      <th className="text-right py-2 px-2 font-semibold text-teal-700 dark:text-teal-400">Tea Total ('000 ha)</th>
+                      <th className="text-right py-2 px-2 font-semibold text-green-700 dark:text-green-400">Tea Active ('000 ha)</th>
+                      <th className="text-right py-2 px-2 font-semibold text-gray-500 dark:text-gray-400">Tea Util%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {coffeeAreaChartData.map((row, i) => {
+                      const tea = teaAreaChartData[i];
+                      return (
+                        <tr key={row.year} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                          <td className="py-2 px-2 font-medium text-gray-700 dark:text-gray-200">{row.year}</td>
+                          <td className="py-2 px-2 text-right text-amber-700 dark:text-amber-300 font-semibold">{row['Total area'] ?? '—'}</td>
+                          <td className="py-2 px-2 text-right text-orange-700 dark:text-orange-300">{row['Under production'] ?? '—'}</td>
+                          <td className="py-2 px-2 text-right text-gray-500 dark:text-gray-400">{row['Utilization %'] !== null ? `${row['Utilization %']}%` : '—'}</td>
+                          <td className="py-2 px-2 text-right text-teal-700 dark:text-teal-300 font-semibold">{tea?.['Total area'] ?? '—'}</td>
+                          <td className="py-2 px-2 text-right text-green-700 dark:text-green-300">{tea?.['Under production'] ?? '—'}</td>
+                          <td className="py-2 px-2 text-right text-gray-500 dark:text-gray-400">{tea?.['Utilization %'] !== null ? `${tea?.['Utilization %']}%` : '—'}</td>
                         </tr>
                       );
                     })}
