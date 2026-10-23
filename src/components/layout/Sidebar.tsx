@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Map, BarChart3, Lightbulb,
-  FileText, Sprout, X, Menu, ChevronLeft, ChevronRight, Rocket,
+  FileText, Sprout, X, Menu, ChevronLeft, ChevronRight, Rocket, Coffee,
 } from 'lucide-react';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/comparison', label: 'Crop Comparison', icon: BarChart3 },
   { to: '/insights', label: 'Insights', icon: Lightbulb },
   { to: '/solutions', label: 'Solutions', icon: Rocket },
+  { to: '/cash-crops', label: 'Cash Crops', icon: Coffee },
   { to: '/reports', label: 'Reports', icon: FileText },
 ];
 
