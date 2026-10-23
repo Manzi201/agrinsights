@@ -88,23 +88,28 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 
 function computeIrrigationData(): IrrigationRow[] {
   const data = getAllData();
-  const seasonC = data.filter((dp) => dp.season === 'C' && dp.year === 2023);
-  const seasonA = data.filter((dp) => dp.season === 'A' && dp.year === 2023);
 
+  // Aggregate ALL years + ALL crops per district per season to get robust values
   const districtC = new Map<string, number>();
   const districtA = new Map<string, number>();
-  for (const dp of seasonC) districtC.set(dp.districtId, (districtC.get(dp.districtId) ?? 0) + dp.production);
-  for (const dp of seasonA) districtA.set(dp.districtId, (districtA.get(dp.districtId) ?? 0) + dp.production);
 
+  for (const dp of data) {
+    if (dp.season === 'A') districtA.set(dp.districtId, (districtA.get(dp.districtId) ?? 0) + dp.production);
+    if (dp.season === 'C') districtC.set(dp.districtId, (districtC.get(dp.districtId) ?? 0) + dp.production);
+  }
+
+  // Normalise: divide by number of years to get per-year average
+  const years = 7;
   return districts
-    .filter((d) => districtA.get(d.id) && districtC.get(d.id))
+    .filter((d) => (districtA.get(d.id) ?? 0) > 0)
     .map((d) => ({
       name: d.name,
       province: d.province,
-      seasonA: districtA.get(d.id) ?? 0,
-      seasonC: districtC.get(d.id) ?? 0,
-      gap: (districtA.get(d.id) ?? 0) - (districtC.get(d.id) ?? 0),
+      seasonA: Math.round((districtA.get(d.id) ?? 0) / years),
+      seasonC: Math.round((districtC.get(d.id) ?? 0) / years),
+      gap: Math.round(((districtA.get(d.id) ?? 0) - (districtC.get(d.id) ?? 0)) / years),
     }))
+    .filter((d) => d.gap > 0)
     .sort((a, b) => b.gap - a.gap)
     .slice(0, 10);
 }
@@ -693,10 +698,11 @@ function PredictionSimulator() {
   const delta = result.projectedProduction - result.currentProduction;
   const deltaPct = result.currentProduction > 0 ? (delta / result.currentProduction) * 100 : 0;
 
+  // Only Production and Area on the grouped bar chart.
+  // Yield is shown as a separate stat card to avoid confusing axis-collapse encodings.
   const chartData = [
     { metric: 'Production (t)', Current: Math.round(result.currentProduction), Projected: Math.round(result.projectedProduction) },
     { metric: 'Area (ha)', Current: Math.round(result.currentArea), Projected: Math.round(result.projectedArea) },
-    { metric: 'Yield ×100', Current: Math.round(result.currentYield * 100), Projected: Math.round(result.projectedYield * 100) },
   ];
 
   const selectClass = 'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500';
@@ -782,6 +788,18 @@ function PredictionSimulator() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">projected change</p>
           </div>
 
+          {/* Yield stat card — shown separately to avoid axis-collapse encoding on the chart */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Current Yield</p>
+              <p className="text-base font-bold text-gray-800 dark:text-gray-100">{result.currentYield.toFixed(2)} t/ha</p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Projected Yield</p>
+              <p className="text-base font-bold text-blue-700 dark:text-blue-400">{result.projectedYield.toFixed(2)} t/ha</p>
+            </div>
+          </div>
+
           <div style={{ height: 220 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 5, right: 10, bottom: 30, left: 10 }}>
@@ -790,10 +808,7 @@ function PredictionSimulator() {
                 <YAxis tick={{ fontSize: 10, fill: cs.axis }} stroke={cs.axis} />
                 <Tooltip
                   contentStyle={cs.tt}
-                  formatter={(v, name) => {
-                    if (name === 'Yield ×100') return [(v as number / 100).toFixed(2) + ' t/ha', 'Yield'];
-                    return [formatNumber(v as number), name as string];
-                  }}
+                  formatter={(v, name) => [formatNumber(v as number), name as string]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, color: cs.isDark ? '#9ca3af' : undefined }} />
                 <Bar dataKey="Current" fill="#6b7280" radius={[4, 4, 0, 0]} />
@@ -1086,6 +1101,15 @@ function OpportunityFinder() {
     { label: 'Investment', value: 'Investment Opportunity' },
   ];
 
+  // Precompute counts once per cards change to avoid inline filter on every render
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: cards.length };
+    for (const card of cards) {
+      counts[card.tag] = (counts[card.tag] ?? 0) + 1;
+    }
+    return counts;
+  }, [cards]);
+
   const filtered = filterTag === 'all' ? cards : cards.filter((c) => c.tag === filterTag);
 
   return (
@@ -1101,7 +1125,7 @@ function OpportunityFinder() {
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
           >
-            {fo.label} {fo.value === 'all' ? `(${cards.length})` : `(${cards.filter((c) => c.tag === fo.value).length})`}
+            {fo.label} ({tagCounts[fo.value] ?? 0})
           </button>
         ))}
       </div>
@@ -1147,12 +1171,17 @@ function computeRoutingData(cropId: string): { hubs: RoutingHub[]; needsSupply: 
     prodByDistrict.set(dp.districtId, (prodByDistrict.get(dp.districtId) ?? 0) + dp.production);
   }
 
+  // Only include districts that actually grow the crop (production > 0)
   const sorted = districts
     .map((d) => ({ district: d, production: prodByDistrict.get(d.id) ?? 0 }))
+    .filter((item) => item.production > 0)
     .sort((a, b) => b.production - a.production);
 
   const top5 = sorted.slice(0, 5);
-  const bottom5 = sorted.slice(-5);
+  // Bottom 5: lowest-producing districts that DO grow the crop (sorted already filters production > 0)
+  const validDistricts = sorted.length;
+  const bottom5Start = Math.max(5, validDistricts - 5);
+  const bottom5 = sorted.slice(bottom5Start);
 
   const hubs: RoutingHub[] = top5.map((item) => ({
     districtId: item.district.id,
