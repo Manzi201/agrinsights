@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { Filters, SummaryStats, DataPoint } from '../types/agriculture';
 import { fetchAgricultureData, fetchSummaryStats, subscribeToDataUpdates, getDataVersion } from '../services/nisr';
-import { getLatestYear } from '../services/agricultureData';
+import { getLatestYear, getAvailableYears } from '../services/agricultureData';
 
 /**
  * Hook for loading filtered agricultural data from the data service.
@@ -64,9 +64,11 @@ export function useFilters(initial?: Partial<Filters>) {
   const dataVersion = useDataVersion();
   useEffect(() => {
     if (initial?.year !== undefined) return;
-    const latest = getLatestYear(cropId, season);
-    setYear(latest);
-  }, [cropId, season, dataVersion, initial?.year]);
+    const yrs = getAvailableYears(cropId, season);
+    if (yrs.length > 0 && !yrs.includes(year)) {
+      setYear(yrs[yrs.length - 1]);
+    }
+  }, [cropId, season, dataVersion, initial?.year, year]);
 
   const filters = useMemo(() => ({ cropId, season, year }), [cropId, season, year]);
 

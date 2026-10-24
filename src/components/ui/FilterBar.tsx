@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { Season } from '../../types/agriculture';
 import { crops, getAvailableYears } from '../../services/agricultureData';
 import { useDataVersion } from '../../hooks/useAgricultureData';
@@ -12,9 +13,17 @@ interface FilterBarProps {
 }
 
 export default function FilterBar({ cropId, season, year, onCropChange, onSeasonChange, onYearChange }: FilterBarProps) {
-  // Re-compute available years whenever the data store updates
-  useDataVersion();
+  useDataVersion(); // re-render when store updates
+
+  // Only show years that have real data for this exact crop + season combo
   const availableYears = getAvailableYears(cropId, season);
+
+  // If the current year is not available for this combo, snap to the last available
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(year)) {
+      onYearChange(availableYears[availableYears.length - 1]);
+    }
+  }, [cropId, season, availableYears, year, onYearChange]);
 
   const selectCls = [
     'px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full',
@@ -57,18 +66,24 @@ export default function FilterBar({ cropId, season, year, onCropChange, onSeason
           </div>
         </div>
 
-        {/* Year — only shows years with real data in the store */}
+        {/* Year — only shows years with actual data for this crop+season */}
         <div className="flex flex-col">
           <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Year</label>
-          <select
-            value={year}
-            onChange={(e) => onYearChange(Number(e.target.value))}
-            className={selectCls + ' min-w-[110px]'}
-          >
-            {availableYears.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+          {availableYears.length > 0 ? (
+            <select
+              value={availableYears.includes(year) ? year : availableYears[availableYears.length - 1]}
+              onChange={(e) => onYearChange(Number(e.target.value))}
+              className={selectCls + ' min-w-[90px]'}
+            >
+              {availableYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-xs min-w-[90px]">
+              No data
+            </div>
+          )}
         </div>
 
       </div>

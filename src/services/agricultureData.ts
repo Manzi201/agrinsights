@@ -105,17 +105,23 @@ export function getAllData(): DataPoint[] {
   return _dataStore;
 }
 
-/** Returns the distinct years present in the live store for a given crop+season, sorted ascending. */
+/** Returns the distinct years present in the live store for a given crop+season.
+ *  Both cropId AND season must be provided for the result to be meaningful.
+ *  If only season is provided, returns years that have ANY data for that season.
+ *  Years with zero matching data points are excluded. */
 export function getAvailableYears(cropId?: string, season?: string): number[] {
   if (_dataStore.length === 0) return [2023];
-  const filtered = cropId || season
-    ? _dataStore.filter((dp) =>
-        (!cropId || dp.cropId === cropId) &&
-        (!season || dp.season === season),
-      )
-    : _dataStore;
+
+  let filtered = _dataStore;
+
+  // Filter by season first — this is the most important constraint
+  if (season) filtered = filtered.filter((dp) => dp.season === season);
+
+  // Then filter by crop if specified
+  if (cropId) filtered = filtered.filter((dp) => dp.cropId === cropId);
+
   const yrs = [...new Set(filtered.map((dp) => dp.year))].sort((a, b) => a - b);
-  return yrs.length > 0 ? yrs : [2023];
+  return yrs.length > 0 ? yrs : (season ? [] : [2023]);
 }
 
 /** Returns the most recent year in the store (or for a specific crop+season). */
