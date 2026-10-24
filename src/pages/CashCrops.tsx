@@ -327,7 +327,7 @@ export default function CashCrops() {
                   <ul className="space-y-1.5 text-xs text-amber-900 dark:text-amber-200">
                     <li>• Peak production: {coffeeStats ? `${formatNumber(coffeeStats.peakProduction)} t (${coffeeStats.peakYear})` : '—'}</li>
                     <li>• Latest: {coffeeStats ? `${formatNumber(coffeeStats.latestProduction)} t (${coffeeStats.latestYear})` : '—'}</li>
-                    <li>• Trend: <strong>declining</strong> — dropped from 23,375 t (2019) to 18,945 t (2022)</li>
+                    <li>• Trend: <strong>{coffeeStats && coffeeStats.totalGrowthPct < 0 ? 'declining' : 'growing'}</strong>{coffeeStats && coffeeStats.peakYear !== coffeeStats.latestYear ? ` — dropped from ${formatNumber(coffeeStats.peakProduction)} t (${coffeeStats.peakYear}) to ${formatNumber(coffeeStats.latestProduction)} t (${coffeeStats.latestYear})` : coffeeStats ? ` — ${formatNumber(coffeeStats.latestProduction)} t (${coffeeStats.latestYear})` : ''}</li>
                     <li>• Action: requires investment in seedling renewal and farmer support programs</li>
                   </ul>
                 </div>

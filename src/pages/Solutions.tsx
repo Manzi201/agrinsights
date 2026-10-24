@@ -1578,7 +1578,7 @@ export default function Solutions() {
   const dataVersion = useDataVersion();
   const [activeTab, setActiveTab] = useState<TabId>('irrigation');
 
-  const irrigationGap = useMemo(() => computeIrrigationData(), [dataVersion]);
+  const irrigationCoverage = useMemo(() => computeIrrigationData(), [dataVersion]);
   const soilDistricts = useMemo(() => computeSoilData(), [dataVersion]);
   const cropSummary = useMemo(() => computePostHarvestData(), [dataVersion]);
   const cropGrowth = useMemo(() => computeProductivityData(), [dataVersion]);
@@ -1605,7 +1605,7 @@ export default function Solutions() {
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <TabBar activeTab={activeTab} onChange={setActiveTab} />
         <div className="bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
-          {activeTab === 'irrigation' && <IrrigationTab irrigationData={irrigationGap} />}
+          {activeTab === 'irrigation' && <IrrigationTab irrigationData={irrigationCoverage} />}
           {activeTab === 'soil' && <SoilTab soilDistricts={soilDistricts} />}
           {activeTab === 'postharvest' && <PostHarvestTab cropSummary={cropSummary} />}
           {activeTab === 'productivity' && <ProductivityTab cropGrowth={cropGrowth} scaleComparison={scaleComparison} />}
