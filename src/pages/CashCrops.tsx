@@ -19,6 +19,8 @@ import { useTheme } from '../context/ThemeContext';
 import { formatNumber } from '../utils/calculations';
 import { districts, crops } from '../services/agricultureData';
 import { PXWEB_DISTRICT_MAP, PXWEB_CROP_MAP, PXWEB_SEASON_MAP } from '../config/api';
+import { getCashProdData, getCashAreaData } from '../services/nisr';
+import { useDataVersion } from '../hooks/useAgricultureData';
 
 // ---------------------------------------------------------------------------
 // Chart style helper
@@ -85,6 +87,7 @@ export default function CashCrops() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'coffee' | 'tea' | 'land' | 'yield'>('overview');
   const cs = useChartStyle();
+  const dataVersion = useDataVersion();
 
   useEffect(() => {
     let cancelled = false;
@@ -93,16 +96,37 @@ export default function CashCrops() {
     Promise.all([fetchCashCropData(), fetchFullYieldTable(), fetchCashCropAreaData()])
       .then(([cash, yield_, area]) => {
         if (cancelled) return;
-        setCashData(cash);
+        // Fallback: if direct fetch returned empty, populate from nisr.ts supplementary stores
+        let resolvedCash = cash;
+        if (resolvedCash.length === 0) {
+          const nisr = getCashProdData();
+          if (nisr.length > 0) {
+            resolvedCash = nisr.map((p) => ({ crop: p.crop, year: p.year, productionTons: p.productionTons }));
+          }
+        }
+        let resolvedArea = area;
+        if (resolvedArea.length === 0) {
+          const nisrArea = getCashAreaData();
+          if (nisrArea.length > 0) {
+            resolvedArea = nisrArea.map((p) => ({
+              category: p.category as CashCropAreaPoint['category'],
+              crop: p.crop,
+              isUnderProduction: p.isActive,
+              year: p.year,
+              areaThousandHa: p.areaThousandHa,
+            }));
+          }
+        }
+        setCashData(resolvedCash);
         setYieldData(yield_);
-        setAreaData(area);
+        setAreaData(resolvedArea);
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load data');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [dataVersion]);
 
   const chartData = useMemo(() => getCashCropChartData(cashData), [cashData]);
   const coffeeStats = useMemo(() => getCashCropStats(cashData, 'Coffee'), [cashData]);

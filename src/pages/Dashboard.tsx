@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { LandPlot, Sprout, TrendingUp, Layers } from 'lucide-react';
+import { LandPlot, Sprout, TrendingUp, Package, Droplets } from 'lucide-react';
 import { useFilters, useAgricultureData, useDataVersion } from '../hooks/useAgricultureData';
 import FilterBar from '../components/ui/FilterBar';
 import StatCard from '../components/ui/StatCard';
@@ -12,15 +12,23 @@ import {
   getProductionTrend,
   getTopDistricts,
   getCropShareByCategory,
+  getHarvestData,
+  getPracticeData,
 } from '../services/nisr';
 import { getCropById, districts } from '../services/agricultureData';
 import { formatNumber, getProductionByDistrict } from '../utils/calculations';
+import { useTheme } from '../context/ThemeContext';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
+} from 'recharts';
 
 export default function Dashboard() {
   const { filters, cropId, season, year, setCropId, setSeason, setYear } = useFilters();
   const { stats, loading } = useAgricultureData(filters);
   const dataVersion = useDataVersion();
   const [selectedDistrict, setSelectedDistrict] = useState<string>('musanze');
+  const { isDark } = useTheme();
 
   const crop = getCropById(cropId);
   const cropColor = crop?.color ?? '#16a34a';
@@ -29,6 +37,62 @@ export default function Dashboard() {
   const trendData = useMemo(() => getProductionTrend(cropId, season), [cropId, season, dataVersion]);
   const topDistricts = useMemo(() => getTopDistricts(cropId, season, year, 10), [cropId, season, year, dataVersion]);
   const cropShare = useMemo(() => getCropShareByCategory(season, year), [season, year, dataVersion]);
+
+  // Harvest efficiency stat
+  const harvestEff = useMemo(() => {
+    const hd = getHarvestData();
+    if (hd.length === 0) return null;
+    const avg = hd.reduce((s, p) => s + p.harvestRatio, 0) / hd.length;
+    return Math.round(avg * 10) / 10;
+  }, [dataVersion]);
+
+  // Districts with irrigation stat
+  const irrigatedDistricts = useMemo(() => {
+    const pd = getPracticeData();
+    if (pd.length === 0) return null;
+    const ids = new Set(
+      pd.filter((p) => p.practice === 'Modern irrigated land' && p.areaHa > 0).map((p) => p.districtId),
+    );
+    return ids.size;
+  }, [dataVersion]);
+
+  // Harvest efficiency by crop (horizontal bar chart)
+  const harvestByCrop = useMemo(() => {
+    const hd = getHarvestData();
+    if (hd.length === 0) return [];
+    const map = new Map<string, number[]>();
+    for (const p of hd) {
+      if (!map.has(p.cropName)) map.set(p.cropName, []);
+      map.get(p.cropName)!.push(p.harvestRatio);
+    }
+    return Array.from(map.entries())
+      .map(([name, vals]) => ({
+        name,
+        ratio: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10,
+      }))
+      .sort((a, b) => b.ratio - a.ratio);
+  }, [dataVersion]);
+
+  // Agricultural practices national totals
+  const practiceNatTotals = useMemo(() => {
+    const pd = getPracticeData();
+    if (pd.length === 0) return [];
+    const map = new Map<string, number>();
+    for (const p of pd) map.set(p.practice, (map.get(p.practice) ?? 0) + p.areaHa);
+    return Array.from(map.entries()).map(([practice, areaHa]) => ({ practice, areaHa }));
+  }, [dataVersion]);
+
+  const chartColors = {
+    grid: isDark ? '#374151' : '#e5e7eb',
+    axis: isDark ? '#6b7280' : '#9ca3af',
+    tt: {
+      borderRadius: '8px',
+      border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+      fontSize: '12px',
+      backgroundColor: isDark ? '#1f2937' : '#fff',
+      color: isDark ? '#f3f4f6' : '#111827',
+    },
+  };
 
   // Prepare AI analysis input for selected district
   const aiInput = useMemo(() => {
@@ -103,16 +167,18 @@ export default function Dashboard() {
           color="blue"
         />
         <StatCard
-          label="Crops Tracked"
-          value={stats ? stats.cropCount.toString() : '—'}
-          icon={<Layers className="w-5 h-5 sm:w-6 sm:h-6" />}
-          color="purple"
+          label="Harvest Efficiency"
+          value={harvestEff !== null ? harvestEff.toString() : '—'}
+          unit="%"
+          icon={<Package className="w-5 h-5 sm:w-6 sm:h-6" />}
+          color="amber"
         />
         <StatCard
-          label="Year Change"
-          value={stats ? `${stats.yearChangePercent > 0 ? '+' : ''}${stats.yearChangePercent}%` : '—'}
-          icon={<TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />}
-          color={stats && stats.yearChangePercent >= 0 ? 'primary' : 'red'}
+          label="Districts w/ Irrigation"
+          value={irrigatedDistricts !== null ? irrigatedDistricts.toString() : '—'}
+          unit="districts"
+          icon={<Droplets className="w-5 h-5 sm:w-6 sm:h-6" />}
+          color="blue"
         />
       </div>
 
@@ -125,6 +191,75 @@ export default function Dashboard() {
       {/* Charts row 2 */}
       <div className="mb-4 sm:mb-6">
         <DistrictBarChart data={topDistricts} cropName={cropName} />
+      </div>
+
+      {/* Harvest Efficiency by Crop */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4 sm:mb-6">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Harvest Efficiency by Crop</h3>
+        {harvestByCrop.length === 0 ? (
+          <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">Harvest data loading...</p>
+        ) : (
+          <div style={{ height: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart layout="vertical" data={harvestByCrop} margin={{ top: 5, right: 40, bottom: 5, left: 80 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                <XAxis
+                  type="number"
+                  domain={[0, 100]}
+                  tick={{ fontSize: 11, fill: chartColors.axis }}
+                  stroke={chartColors.axis}
+                  tickFormatter={(v) => `${v}%`}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: chartColors.axis }}
+                  stroke={chartColors.axis}
+                  width={75}
+                />
+                <Tooltip
+                  contentStyle={chartColors.tt}
+                  formatter={(v) => [`${v}%`, 'Avg Harvest Ratio']}
+                />
+                <Bar dataKey="ratio" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+
+      {/* Agricultural Practices */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4 sm:mb-6">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Agricultural Practices — National Coverage (ha)</h3>
+        {practiceNatTotals.length === 0 ? (
+          <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">Practices data loading...</p>
+        ) : (
+          <div style={{ height: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={practiceNatTotals} margin={{ top: 5, right: 20, bottom: 60, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+                <XAxis
+                  dataKey="practice"
+                  tick={{ fontSize: 10, fill: chartColors.axis }}
+                  stroke={chartColors.axis}
+                  angle={-20}
+                  textAnchor="end"
+                  interval={0}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: chartColors.axis }}
+                  stroke={chartColors.axis}
+                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  contentStyle={chartColors.tt}
+                  formatter={(v) => [formatNumber(v as number) + ' ha', 'Area']}
+                />
+                <Bar dataKey="areaHa" fill="#16a34a" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* District Analysis panel */}

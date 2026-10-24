@@ -4,6 +4,7 @@ import { crops, districts, getAvailableYears, seasons, getAllData, getDistrictBy
 import { formatNumber, percentChange } from '../utils/calculations';
 import { exportToCSV, exportReportToPDF, dataPointsToCSVRows } from '../utils/exportUtils';
 import { useDataVersion } from '../hooks/useAgricultureData';
+import { getPracticeData, getHarvestData } from '../services/nisr';
 import { FileDown, FileText, Printer } from 'lucide-react';
 
 export default function Reports() {
@@ -103,6 +104,59 @@ export default function Reports() {
       change: i > 0 ? percentChange(production, sorted[i - 1][1]) : 0,
     }));
   }, [reportData]);
+
+  // Crop summary with harvest ratio (Track 1)
+  const cropSummaryWithHarvest = useMemo(() => {
+    const hd = getHarvestData();
+    const harvestRatioMap = new Map<string, number[]>();
+    for (const p of hd) {
+      if (!harvestRatioMap.has(p.cropId)) harvestRatioMap.set(p.cropId, []);
+      harvestRatioMap.get(p.cropId)!.push(p.harvestRatio);
+    }
+    return byCropSummary.map((row) => ({
+      ...row,
+      avgHarvestRatio: harvestRatioMap.has(row.cropId)
+        ? Math.round(harvestRatioMap.get(row.cropId)!.reduce((a, b) => a + b, 0) / harvestRatioMap.get(row.cropId)!.length * 10) / 10
+        : null,
+    }));
+  }, [byCropSummary, dataVersion]);
+
+  // Agricultural practices coverage (Track 1)
+  const practicesByDistrict = useMemo(() => {
+    const pd = getPracticeData();
+    if (pd.length === 0) return [];
+    const map = new Map<string, { name: string; irrigationHa: number; erosionHa: number; fertilizerHa: number }>();
+    for (const p of pd) {
+      if (!map.has(p.districtId)) map.set(p.districtId, { name: p.districtName, irrigationHa: 0, erosionHa: 0, fertilizerHa: 0 });
+      const entry = map.get(p.districtId)!;
+      if (p.practice === 'Modern irrigated land') entry.irrigationHa += p.areaHa;
+      else if (p.practice === 'Erosion control') entry.erosionHa += p.areaHa;
+      else if (p.practice === 'Inorganic fertilizer' || p.practice === 'Organic fertilizer') entry.fertilizerHa += p.areaHa;
+    }
+    return Array.from(map.values())
+      .map((v) => ({ ...v, totalHa: v.irrigationHa + v.erosionHa + v.fertilizerHa }))
+      .sort((a, b) => b.totalHa - a.totalHa)
+      .slice(0, 10);
+  }, [dataVersion]);
+
+  // Export potential ranking (Track 1)
+  const exportRanking = useMemo(() => {
+    const exportCropIds = ['irish-potato', 'wheat', 'rice'];
+    const ad = getAllData();
+    const adYears = ad.filter((p) => p.season === 'A').map((p) => p.year);
+    const latestYear = adYears.length > 0 ? Math.max(...adYears) : 2023;
+    const map = new Map<string, number>();
+    for (const dp of ad.filter((p) => p.season === 'A' && p.year === latestYear && exportCropIds.includes(p.cropId))) {
+      map.set(dp.districtId, (map.get(dp.districtId) ?? 0) + dp.production);
+    }
+    return Array.from(map.entries())
+      .map(([districtId, production]) => {
+        const d = getDistrictById(districtId);
+        return { districtName: d?.name ?? districtId, province: d?.province ?? '', production: Math.round(production) };
+      })
+      .sort((a, b) => b.production - a.production)
+      .slice(0, 10);
+  }, [dataVersion]);
 
   const handleCSVExport = () => {
     const rows = dataPointsToCSVRows(reportData);
@@ -316,10 +370,11 @@ export default function Reports() {
                       <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Production (t)</th>
                       <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Area (ha)</th>
                       <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Yield (t/ha)</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Harvest Ratio (%)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {byCropSummary.map((row) => (
+                    {cropSummaryWithHarvest.map((row) => (
                       <tr key={row.cropId} className="border-b border-gray-100 dark:border-gray-700">
                         <td className="py-2 px-3 text-gray-700 dark:text-gray-200">
                           <span className="inline-flex items-center gap-1.5">
@@ -330,6 +385,9 @@ export default function Reports() {
                         <td className="py-2 px-3 text-right font-medium text-gray-900 dark:text-white">{formatNumber(row.production)}</td>
                         <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.area)}</td>
                         <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{row.yield}</td>
+                        <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">
+                          {row.avgHarvestRatio !== null ? `${row.avgHarvestRatio}%` : '—'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -399,6 +457,71 @@ export default function Reports() {
             )}
           </>
         )}
+
+        {/* Track 1 Impact Report — supplementary NISR data */}
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4">Track 1 Impact Report — NISR Supplementary Data</h4>
+
+          {/* Agricultural Practices Coverage */}
+          <div className="mb-6">
+            <h5 className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-2">Agricultural Practices Coverage (Top 10 Districts)</h5>
+            {practicesByDistrict.length > 0 ? (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">District</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Irrigation (ha)</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Erosion Control (ha)</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Fertilizer (ha)</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Total (ha)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {practicesByDistrict.map((row) => (
+                    <tr key={row.name} className="border-b border-gray-100 dark:border-gray-700">
+                      <td className="py-2 px-3 text-gray-700 dark:text-gray-200">{row.name}</td>
+                      <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.irrigationHa)}</td>
+                      <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.erosionHa)}</td>
+                      <td className="py-2 px-3 text-right text-gray-600 dark:text-gray-300">{formatNumber(row.fertilizerHa)}</td>
+                      <td className="py-2 px-3 text-right font-medium text-gray-900 dark:text-white">{formatNumber(row.totalHa)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-xs text-gray-400 dark:text-gray-500 italic">NISR supplementary data loading...</p>
+            )}
+          </div>
+
+          {/* Export Potential Ranking */}
+          <div>
+            <h5 className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-2">Export Potential Ranking (Irish Potato + Wheat + Rice)</h5>
+            {exportRanking.length > 0 ? (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Rank</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">District</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Province</th>
+                    <th className="text-right py-2 px-3 font-semibold text-gray-600 dark:text-gray-300">Combined Production (t)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {exportRanking.map((row, i) => (
+                    <tr key={row.districtName} className="border-b border-gray-100 dark:border-gray-700">
+                      <td className="py-2 px-3 text-gray-500 dark:text-gray-400 font-medium">{i + 1}</td>
+                      <td className="py-2 px-3 text-gray-700 dark:text-gray-200">{row.districtName}</td>
+                      <td className="py-2 px-3 text-gray-500 dark:text-gray-400">{row.province}</td>
+                      <td className="py-2 px-3 text-right font-medium text-gray-900 dark:text-white">{formatNumber(row.production)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-xs text-gray-400 dark:text-gray-500 italic">NISR supplementary data loading...</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
