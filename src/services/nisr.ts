@@ -1,22 +1,23 @@
 // ---------------------------------------------------------------------------
 // nisr.ts — NISR Data Service
 //
-// Fetches ALL available tables from the NISR PXWeb API and builds a complete
-// DataPoint store covering:
-//   • Season A+B 2023: area, harvest, yield per district per crop
-//   • Season C 2021+2022: area per district per crop
-//   • Multi-year GVA 2016-2023: production proxy for trend charts
-//   • Large-scale farmer yields 2023
-//   • Agricultural land use + practices 2023
+// Fetches ALL available tables from the NISR PXWeb API sequentially
+// to avoid 429 rate-limiting. Core Season A+B data loads first so the
+// Dashboard renders immediately; supplementary tables follow with delays.
 // ---------------------------------------------------------------------------
 
 import type { DataPoint, Filters, SummaryStats, Season } from '../types/agriculture';
 import { getAllData, setAllData, getDistrictById, getCropById } from './agricultureData';
-import { buildPxWebUrl, PXWEB_DATA_YEAR, PXWEB_CROP_MAP, PXWEB_DISTRICT_MAP, PXWEB_SEASON_MAP, DATAGOV_BASE, DATAGOV_API_KEY } from '../config/api';
+import {
+  buildPxWebUrl, PXWEB_DATA_YEAR,
+  PXWEB_CROP_MAP, PXWEB_DISTRICT_MAP, PXWEB_SEASON_MAP,
+  DATAGOV_BASE, DATAGOV_API_KEY,
+} from '../config/api';
 
 const TIMEOUT = 20000;
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-// ─── Connection state ────────────────────────────────────────────────────────
+// ─── Connection state ─────────────────────────────────────────────────────────
 
 export type ApiStatus = 'loading' | 'connected' | 'error';
 let _status: ApiStatus = 'loading';
@@ -34,9 +35,9 @@ export function getLastFetched()  { return _fetched; }
 export function isUsingMockData() { return false; }
 export async function refreshNisrData() { return initNisrConnection(); }
 
-// ─── HTTP helpers ────────────────────────────────────────────────────────────
+// ─── HTTP helper ──────────────────────────────────────────────────────────────
 
-interface PxRow { key: string[]; values: string[]; }
+interface PxRow  { key: string[]; values: string[]; }
 interface PxResp { columns: { code: string }[]; data: PxRow[]; }
 
 async function postPx(segments: string[], body: object): Promise<PxResp> {
@@ -50,88 +51,122 @@ async function postPx(segments: string[], body: object): Promise<PxResp> {
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
-    if (!r.ok) throw new Error(`HTTP ${r.status}: ${url}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`);
     return (await r.json()) as PxResp;
   } finally { clearTimeout(t); }
 }
 
-function val(row: PxRow): number | null {
+function numVal(row: PxRow): number | null {
   const v = row.values[0];
   if (!v || v === '..' || v === '...') return null;
   const n = parseFloat(v);
   return isNaN(n) || n <= 0 ? null : n;
 }
 
-// ─── Path helpers ─────────────────────────────────────────────────────────────
+// ─── Static path helpers ──────────────────────────────────────────────────────
 
-const DIR = ['NISR Statistical Databases', 'Agriculture', 'Crop area, production and yield for major crops'];
-const path = (...tail: string[]) => [...DIR, ...tail];
+const CROP_DIR  = ['NISR Statistical Databases', 'Agriculture', 'Crop area, production and yield for major crops'];
+const CASH_DIR  = ['NISR Statistical Databases', 'Agriculture', 'Cash Crops'];
+const LAND_DIR  = ['NISR Statistical Databases', 'Agriculture', 'Agricultural land use'];
+const PRAC_DIR  = ['NISR Statistical Databases', 'Agriculture', 'Agricultural practices'];
+const crop = (...f: string[]) => [...CROP_DIR, ...f];
 
 // ─── Mapping tables ───────────────────────────────────────────────────────────
 
-// Season A+B 2023 tables use 30-district codes 0-29 (same for all)
 const DIST = PXWEB_DISTRICT_MAP;   // '0'→'nyarugenge' … '29'→'bugesera'
 const SEAS = PXWEB_SEASON_MAP;     // '0'→'A', '1'→'B'
-const CROP = PXWEB_CROP_MAP;       // '0'→'maize', '7'→'irish-potato' etc.
+const CROP_MAP = PXWEB_CROP_MAP;   // '0'→'maize', '7'→'irish-potato' etc.
 
-// Season C table: code 0 = Season_C 2022, code 1 = Season_C 2021
+// Season C year codes
 const SEASON_C_YEAR: Record<string, number> = { '0': 2022, '1': 2021 };
 
-// scro_area crop codes (different subset)
+// scro_area.px crop codes (Season C subset)
 const SCRO_CROP: Record<string, string> = {
-  '0': 'sweet-potato', '1': 'irish-potato', '2': 'beans',
-  '3': 'beans',        '4': 'beans',        '5': 'beans',
-  '6': 'beans',        '7': 'sorghum',
+  '0': 'sweet-potato', '1': 'irish-potato',
+  '2': 'beans', '3': 'beans', '4': 'beans', '5': 'beans', '6': 'beans',
+  '7': 'sorghum',
 };
 
-// crops.px (GVA) — 14 crops ordered by valueTexts
+// crops.px (GVA) crop codes
+const GVA_CROP_MAP: Record<string, string> = {
+  '0': 'maize', '1': 'sorghum', '2': 'rice', '3': 'wheat',
+  '4': 'cassava', '5': 'sweet-potato', '6': 'irish-potato',
+  '7': 'cassava', '8': 'cassava', '9': 'cassava',
+  '10': 'beans', '11': 'beans', '12': 'beans', '13': 'beans',
+};
 const GVA_YEAR: Record<string, number> = {
   '0': 2016, '1': 2017, '2': 2018, '3': 2019,
   '4': 2020, '5': 2021, '6': 2022, '7': 2023,
 };
-// Approximate GVA (BillionFrw/ha) → production conversion factor
-// GVA/ha × average_area_ha → relative production index
-// We'll use GVA as a production proxy scaled to match 2023 actual production
-// scaling applied after loading real 2023 data
 
-// ─── Fetch Season A+B 2023 (area + yield → production) ───────────────────────
+// Agricultural practices
+const PRACTICE_MAP: Record<string, string> = {
+  '0': 'Modern irrigated land', '1': 'Erosion control',
+  '2': 'Agroforestry', '3': 'Inorganic fertilizer', '4': 'Organic fertilizer',
+};
 
-async function fetchSeasonAB(): Promise<DataPoint[]> {
-  const allDistCodes = Object.keys(DIST);   // '0'..'29'
-  const allCropCodes = Object.keys(CROP);   // '0','1','2','3','5','6','7','13'
-  const allSeasCodes = Object.keys(SEAS);   // '0','1'
+// Land use
+const LAND_USE_MAP: Record<string, string> = {
+  '0': 'Total land area', '1': 'Agricultural land', '2': '% agricultural land',
+  '3': 'Arable land', '4': 'Physical cultivated land', '5': 'Seasonal crops area',
+  '6': 'Permanent crops area', '7': 'Temporary fallow',
+  '8': 'Meadow & pasture', '9': 'Permanent pasture',
+};
 
-  const [areaResp, yieldResp] = await Promise.all([
-    postPx(path('_crop_area.px'), {
-      query: [
-        { code: 'Season',           selection: { filter: 'item', values: allSeasCodes } },
-        { code: 'District  (ha)',   selection: { filter: 'item', values: allDistCodes } },
-        { code: 'Crop type',        selection: { filter: 'item', values: allCropCodes } },
-      ],
-      response: { format: 'json' },
-    }),
-    postPx(path('yield.px'), {
-      query: [
-        { code: 'Season',    selection: { filter: 'item', values: allSeasCodes } },
-        { code: 'District',  selection: { filter: 'item', values: allDistCodes } },
-        { code: 'Crop type', selection: { filter: 'item', values: allCropCodes } },
-      ],
-      response: { format: 'json' },
-    }),
-  ]);
+// ─── Supplementary data stores ────────────────────────────────────────────────
 
-  // Build maps keyed by "season|districtId|cropId"
+export interface GvaPoint       { cropId: string; cropName: string; year: number; gva: number; }
+export interface PracticePoint  { season: string; districtId: string; districtName: string; practice: string; areaHa: number; }
+export interface LandUsePoint   { season: string; districtId: string; districtName: string; landUse: string; areaThousandHa: number; }
+
+let _gvaData:      GvaPoint[]      = [];
+let _practiceData: PracticePoint[] = [];
+let _landUseData:  LandUsePoint[]  = [];
+
+export function getGvaData():      GvaPoint[]      { return _gvaData; }
+export function getPracticeData(): PracticePoint[] { return _practiceData; }
+export function getLandUseData():  LandUsePoint[]  { return _landUseData; }
+
+// ─── Table fetchers ───────────────────────────────────────────────────────────
+
+const allDistCodes = Object.keys(DIST);
+const allCropCodes = Object.keys(CROP_MAP);
+const allSeasCodes = Object.keys(SEAS);
+
+async function fetchCultivatedArea(): Promise<PxResp> {
+  return postPx(crop('_crop_area.px'), {
+    query: [
+      { code: 'Season',         selection: { filter: 'item', values: allSeasCodes } },
+      { code: 'District  (ha)', selection: { filter: 'item', values: allDistCodes } },
+      { code: 'Crop type',      selection: { filter: 'item', values: allCropCodes } },
+    ],
+    response: { format: 'json' },
+  });
+}
+
+async function fetchYield(): Promise<PxResp> {
+  return postPx(crop('yield.px'), {
+    query: [
+      { code: 'Season',    selection: { filter: 'item', values: allSeasCodes } },
+      { code: 'District',  selection: { filter: 'item', values: allDistCodes } },
+      { code: 'Crop type', selection: { filter: 'item', values: allCropCodes } },
+    ],
+    response: { format: 'json' },
+  });
+}
+
+function combineAreaYield(areaResp: PxResp, yieldResp: PxResp): DataPoint[] {
   const areaMap  = new Map<string, number>();
   const yieldMap = new Map<string, number>();
 
   for (const row of areaResp.data) {
-    const v = val(row); if (!v) continue;
-    const s = SEAS[row.key[0]]; const d = DIST[row.key[1]]; const c = CROP[row.key[2]];
+    const v = numVal(row); if (!v) continue;
+    const s = SEAS[row.key[0]], d = DIST[row.key[1]], c = CROP_MAP[row.key[2]];
     if (s && d && c) areaMap.set(`${s}|${d}|${c}`, v);
   }
   for (const row of yieldResp.data) {
-    const v = val(row); if (!v) continue;
-    const s = SEAS[row.key[0]]; const d = DIST[row.key[1]]; const c = CROP[row.key[2]];
+    const v = numVal(row); if (!v) continue;
+    const s = SEAS[row.key[0]], d = DIST[row.key[1]], c = CROP_MAP[row.key[2]];
     if (s && d && c) yieldMap.set(`${s}|${d}|${c}`, v);
   }
 
@@ -144,7 +179,7 @@ async function fetchSeasonAB(): Promise<DataPoint[]> {
     points.push({
       districtId, cropId,
       season: season as Season,
-      year: PXWEB_DATA_YEAR,   // 2023
+      year:       PXWEB_DATA_YEAR,
       production: Math.round((area * yieldKg) / 1000),
       area:        Math.round(area),
       yieldPerHa:  Math.round((yieldKg / 1000) * 100) / 100,
@@ -153,161 +188,64 @@ async function fetchSeasonAB(): Promise<DataPoint[]> {
   return points;
 }
 
-// ─── Fetch Season C 2021+2022 ─────────────────────────────────────────────────
-
 async function fetchSeasonC(): Promise<DataPoint[]> {
-  const resp = await postPx(path('scro_area.px'), {
-    query: [], response: { format: 'json' },
-  });
-
-  // Season C only has area, no yield table — estimate yield as national average
-  // for that crop from Season A 2023 data / 1.1 (dry season penalty)
-  const points: DataPoint[] = [];
+  const resp = await postPx(crop('scro_area.px'), { query: [], response: { format: 'json' } });
+  const pts: DataPoint[] = [];
   for (const row of resp.data) {
-    const area = val(row); if (!area) continue;
+    const area = numVal(row); if (!area) continue;
     const year       = SEASON_C_YEAR[row.key[0]];
     const districtId = DIST[row.key[1]];
     const cropId     = SCRO_CROP[row.key[2]];
     if (!year || !districtId || !cropId) continue;
-    // Use a conservative yield (lower than Season A)
-    const crop = getCropById(cropId);
-    const estimatedYieldTPerHa = crop ? (crop.yieldLow + crop.yieldHigh) / 2 * 0.6 : 1;
-    points.push({
-      districtId, cropId,
-      season: 'C',
-      year,
-      production: Math.round(area * estimatedYieldTPerHa),
-      area:        Math.round(area),
-      yieldPerHa:  Math.round(estimatedYieldTPerHa * 100) / 100,
-    });
+    const c = getCropById(cropId);
+    const yEst = c ? (c.yieldLow + c.yieldHigh) / 2 * 0.6 : 1;
+    pts.push({ districtId, cropId, season: 'C', year, production: Math.round(area * yEst), area: Math.round(area), yieldPerHa: Math.round(yEst * 100) / 100 });
   }
-  return points;
+  return pts;
 }
-
-// ─── Fetch multi-year GVA trend (crops.px) 2016-2023 ─────────────────────────
-// GVA is in Billion Frw/ha — we use it as a national-level production proxy
-// scaled against 2023 real production so trend direction is correct.
-
-export interface GvaPoint {
-  cropId: string;
-  cropName: string;
-  year: number;
-  gva: number; // Billion Frw
-}
-
-let _gvaData: GvaPoint[] = [];
-
-export function getGvaData(): GvaPoint[] { return _gvaData; }
 
 async function fetchGva(): Promise<GvaPoint[]> {
-  const resp = await postPx(
-    ['NISR Statistical Databases', 'Agriculture', 'Cash Crops', 'crops.px'],
-    { query: [], response: { format: 'json' } },
-  );
-
-  // Crop codes for crops.px (from metadata valueTexts order)
-  const GVA_CROP_NAMES: Record<string, string> = {
-    '0': 'maize', '1': 'sorghum', '2': 'rice', '3': 'wheat',
-    '4': 'cassava', '5': 'sweet-potato', '6': 'irish-potato',
-    '7': 'cassava', '8': 'cassava', '9': 'cassava',
-    '10': 'beans', '11': 'beans', '12': 'beans', '13': 'beans',
-  };
-
-  const points: GvaPoint[] = [];
+  const resp = await postPx([...CASH_DIR, 'crops.px'], { query: [], response: { format: 'json' } });
+  const pts: GvaPoint[] = [];
   for (const row of resp.data) {
-    const v = val(row); if (!v) continue;
-    const cropId = GVA_CROP_NAMES[row.key[0]];
+    const v = numVal(row); if (!v) continue;
+    const cropId = GVA_CROP_MAP[row.key[0]];
     const year   = GVA_YEAR[row.key[1]];
     if (!cropId || !year) continue;
-    const crop = getCropById(cropId);
-    points.push({ cropId, cropName: crop?.name ?? cropId, year, gva: Math.round(v) });
+    const c = getCropById(cropId);
+    pts.push({ cropId, cropName: c?.name ?? cropId, year, gva: Math.round(v) });
   }
-  return points;
+  return pts;
 }
-
-// ─── Fetch agricultural practices (irrigation, fertiliser) ───────────────────
-
-export interface PracticePoint {
-  season: string;
-  districtId: string;
-  districtName: string;
-  practice: string;
-  areaHa: number;
-}
-
-let _practiceData: PracticePoint[] = [];
-export function getPracticeData(): PracticePoint[] { return _practiceData; }
-
-const PRACTICE_MAP: Record<string, string> = {
-  '0': 'Modern irrigated land',
-  '1': 'Erosion control',
-  '2': 'Agroforestry',
-  '3': 'Inorganic fertilizer',
-  '4': 'Organic fertilizer',
-};
 
 async function fetchPractices(): Promise<PracticePoint[]> {
-  const resp = await postPx(
-    ['NISR Statistical Databases', 'Agriculture', 'Agricultural practices', 'pratice.px'],
-    { query: [], response: { format: 'json' } },
-  );
-
-  const points: PracticePoint[] = [];
+  const resp = await postPx([...PRAC_DIR, 'pratice.px'], { query: [], response: { format: 'json' } });
+  const pts: PracticePoint[] = [];
   for (const row of resp.data) {
-    const v = val(row); if (!v) continue;
+    const v = numVal(row); if (!v) continue;
     const season     = SEAS[row.key[0]];
     const districtId = DIST[row.key[1]];
     const practice   = PRACTICE_MAP[row.key[2]];
     if (!season || !districtId || !practice) continue;
-    const dist = getDistrictById(districtId);
-    points.push({ season, districtId, districtName: dist?.name ?? districtId, practice, areaHa: Math.round(v) });
+    const d = getDistrictById(districtId);
+    pts.push({ season, districtId, districtName: d?.name ?? districtId, practice, areaHa: Math.round(v) });
   }
-  return points;
+  return pts;
 }
-
-// ─── Fetch land use ───────────────────────────────────────────────────────────
-
-export interface LandUsePoint {
-  season: string;
-  districtId: string;
-  districtName: string;
-  landUse: string;
-  areaThousandHa: number;
-}
-
-let _landUseData: LandUsePoint[] = [];
-export function getLandUseData(): LandUsePoint[] { return _landUseData; }
-
-const LAND_USE_MAP: Record<string, string> = {
-  '0': 'Total land area',
-  '1': 'Agricultural land',
-  '2': '% agricultural land',
-  '3': 'Arable land',
-  '4': 'Physical cultivated land',
-  '5': 'Seasonal crops area',
-  '6': 'Permanent crops area',
-  '7': 'Temporary fallow',
-  '8': 'Meadow & pasture',
-  '9': 'Permanent pasture',
-};
 
 async function fetchLandUse(): Promise<LandUsePoint[]> {
-  const resp = await postPx(
-    ['NISR Statistical Databases', 'Agriculture', 'Agricultural land use', 'land.px'],
-    { query: [], response: { format: 'json' } },
-  );
-
-  const points: LandUsePoint[] = [];
+  const resp = await postPx([...LAND_DIR, 'land.px'], { query: [], response: { format: 'json' } });
+  const pts: LandUsePoint[] = [];
   for (const row of resp.data) {
-    const v = val(row); if (!v) continue;
+    const v = numVal(row); if (!v) continue;
     const season     = SEAS[row.key[0]];
     const districtId = DIST[row.key[1]];
     const landUse    = LAND_USE_MAP[row.key[2]];
     if (!season || !districtId || !landUse) continue;
-    const dist = getDistrictById(districtId);
-    points.push({ season, districtId, districtName: dist?.name ?? districtId, landUse, areaThousandHa: v });
+    const d = getDistrictById(districtId);
+    pts.push({ season, districtId, districtName: d?.name ?? districtId, landUse, areaThousandHa: v });
   }
-  return points;
+  return pts;
 }
 
 // ─── data.gov.rw ──────────────────────────────────────────────────────────────
@@ -324,7 +262,7 @@ export async function fetchDatagovDataset(datasetId: string, limit = 100): Promi
   } finally { clearTimeout(t); }
 }
 
-// ─── Main initialization ──────────────────────────────────────────────────────
+// ─── Main initialization — sequential to avoid 429 ───────────────────────────
 
 export async function initNisrConnection(): Promise<boolean> {
   _status = 'loading';
@@ -332,37 +270,39 @@ export async function initNisrConnection(): Promise<boolean> {
   bump();
 
   try {
-    // Fetch all tables in parallel — if any fail, we log and continue
-    const [seasonABData, seasonCData, gvaData, practiceData, landUseData] = await Promise.allSettled([
-      fetchSeasonAB(),
-      fetchSeasonC(),
-      fetchGva(),
-      fetchPractices(),
-      fetchLandUse(),
-    ]);
+    // ── Step 1: Cultivated area (required)
+    const areaResp = await fetchCultivatedArea();
+    await sleep(500);
 
-    // Core data (Season A+B 2023) — required
-    if (seasonABData.status === 'rejected') {
-      throw new Error(`Season A+B fetch failed: ${String(seasonABData.reason)}`);
-    }
-    const abPoints: DataPoint[] = seasonABData.value;
-    if (abPoints.length === 0) throw new Error('Season A+B returned 0 data points');
+    // ── Step 2: Yield (required)
+    const yieldResp = await fetchYield();
 
-    // Season C — optional, add if available
-    const cPoints: DataPoint[] = seasonCData.status === 'fulfilled' ? seasonCData.value : [];
+    // Combine and store core data — Dashboard renders now
+    const abPoints = combineAreaYield(areaResp, yieldResp);
+    if (abPoints.length === 0) throw new Error('NISR returned 0 data points (area × yield)');
 
-    // Combine all DataPoints
-    setAllData([...abPoints, ...cPoints]);
-
-    // Store supplementary data
-    _gvaData      = gvaData.status === 'fulfilled' ? gvaData.value : [];
-    _practiceData = practiceData.status === 'fulfilled' ? practiceData.value : [];
-    _landUseData  = landUseData.status === 'fulfilled' ? landUseData.value : [];
-
+    setAllData(abPoints);
     _status  = 'connected';
     _fetched = new Date().toISOString();
-    _error   = null;
-    bump();
+    bump(); // ← Dashboard renders here
+
+    // ── Steps 3-6: Supplementary tables — failures tolerated, delays between calls
+    await sleep(600);
+    try {
+      const cPoints = await fetchSeasonC();
+      if (cPoints.length > 0) setAllData([...getAllData(), ...cPoints]);
+    } catch { /* Season C non-critical */ }
+
+    await sleep(600);
+    try { _gvaData = await fetchGva(); } catch { /* GVA non-critical */ }
+
+    await sleep(600);
+    try { _practiceData = await fetchPractices(); } catch { /* practices non-critical */ }
+
+    await sleep(600);
+    try { _landUseData = await fetchLandUse(); } catch { /* land use non-critical */ }
+
+    bump(); // final update with all supplementary data
     return true;
   } catch (err) {
     _status = 'error';
@@ -379,24 +319,23 @@ export async function fetchAgricultureData(filters: Filters): Promise<DataPoint[
   const exact = data.filter(
     (dp) => dp.cropId === filters.cropId && dp.season === filters.season && dp.year === filters.year,
   );
-  // Fallback: any year for this crop+season if exact year not present
   return exact.length > 0
     ? exact
     : data.filter((dp) => dp.cropId === filters.cropId && dp.season === filters.season);
 }
 
 export async function fetchSummaryStats(filters: Filters): Promise<SummaryStats> {
-  const filtered    = await fetchAgricultureData(filters);
-  const totalArea   = filtered.reduce((s, dp) => s + dp.area, 0);
-  const totalProd   = filtered.reduce((s, dp) => s + dp.production, 0);
-  const avgYield    = totalArea > 0 ? totalProd / totalArea : 0;
-  const cropCount   = new Set(getAllData().map((dp) => dp.cropId)).size;
+  const filtered  = await fetchAgricultureData(filters);
+  const totalArea = filtered.reduce((s, dp) => s + dp.area, 0);
+  const totalProd = filtered.reduce((s, dp) => s + dp.production, 0);
+  const avgYield  = totalArea > 0 ? totalProd / totalArea : 0;
+  const cropCount = new Set(getAllData().map((dp) => dp.cropId)).size;
 
-  const prevData  = getAllData().filter(
+  const prevData = getAllData().filter(
     (dp) => dp.cropId === filters.cropId && dp.season === filters.season && dp.year === filters.year - 1,
   );
-  const prevProd  = prevData.reduce((s, dp) => s + dp.production, 0);
-  const yoyPct    = prevProd > 0 ? ((totalProd - prevProd) / prevProd) * 100 : 0;
+  const prevProd = prevData.reduce((s, dp) => s + dp.production, 0);
+  const yoyPct   = prevProd > 0 ? ((totalProd - prevProd) / prevProd) * 100 : 0;
 
   return {
     totalArea:         Math.round(totalArea),
@@ -411,13 +350,11 @@ export function getCropData(cropId: string): DataPoint[] {
   return getAllData().filter((dp) => dp.cropId === cropId);
 }
 
-// ─── Trend from GVA data (multi-year 2016-2023) ───────────────────────────────
-
 export interface TrendPoint { year: string; production: number; area: number; yield: number; }
 
 export function getProductionTrend(cropId: string, season: Season): TrendPoint[] {
-  // Use live DataPoint store for seasons/years we have
-  const live = getAllData().filter((dp) => dp.cropId === cropId && dp.season === season);
+  // Use live store for seasons+years we actually have
+  const live       = getAllData().filter((dp) => dp.cropId === cropId && dp.season === season);
   const liveByYear = new Map<number, { production: number; area: number }>();
   for (const dp of live) {
     const ex = liveByYear.get(dp.year) ?? { production: 0, area: 0 };
@@ -426,12 +363,11 @@ export function getProductionTrend(cropId: string, season: Season): TrendPoint[]
     liveByYear.set(dp.year, ex);
   }
 
-  // Fill in historical years 2016-2022 from GVA data (national-level proxy)
-  // We scale GVA→production using the 2023 actual production as anchor
+  // Fill historical years from GVA data scaled to 2023 production
   const gvaForCrop = _gvaData.filter((g) => g.cropId === cropId);
-  const gva2023    = gvaForCrop.find((g) => g.year === 2023)?.gva ?? 0;
-  const prod2023   = liveByYear.get(2023)?.production ?? 0;
-  const scale      = (gva2023 > 0 && prod2023 > 0) ? prod2023 / gva2023 : 1;
+  const gva2023    = gvaForCrop.find((g) => g.year === PXWEB_DATA_YEAR)?.gva ?? 0;
+  const prod2023   = liveByYear.get(PXWEB_DATA_YEAR)?.production ?? 0;
+  const scale      = gva2023 > 0 && prod2023 > 0 ? prod2023 / gva2023 : 0;
 
   const allYears = new Set<number>([
     ...liveByYear.keys(),
@@ -441,17 +377,11 @@ export function getProductionTrend(cropId: string, season: Season): TrendPoint[]
   return [...allYears].sort().map((year) => {
     if (liveByYear.has(year)) {
       const { production, area } = liveByYear.get(year)!;
-      return {
-        year: String(year),
-        production: Math.round(production),
-        area:        Math.round(area),
-        yield: area > 0 ? Math.round((production / area) * 100) / 100 : 0,
-      };
+      return { year: String(year), production: Math.round(production), area: Math.round(area), yield: area > 0 ? Math.round((production / area) * 100) / 100 : 0 };
     }
-    // Historical year — use GVA scaled to production
-    const gvaPoint = gvaForCrop.find((g) => g.year === year);
-    const estProd  = gvaPoint ? Math.round(gvaPoint.gva * scale) : 0;
-    return { year: String(year), production: estProd, area: 0, yield: 0 };
+    const gp = gvaForCrop.find((g) => g.year === year);
+    const est = scale > 0 && gp ? Math.round(gp.gva * scale) : 0;
+    return { year: String(year), production: est, area: 0, yield: 0 };
   });
 }
 
