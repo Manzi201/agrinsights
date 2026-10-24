@@ -65,11 +65,10 @@ export const crops: Crop[] = [
   { id: 'rice',         name: 'Rice',         nameKinyarwanda: 'Umuceri',   category: 'Cereals',        yieldLow: 3,   yieldHigh: 6,  color: '#06b6d4' },
 ];
 
-// Seasons and year range covered by NISR PXWeb data
+// Seasons: A+B from 2023 API, C from 2021/2022 API, all available in store
 export const seasons: Season[] = ['A', 'B', 'C'];
-// NISR PXWeb currently covers Season A and B for 2023
-// Year list shown in filter selectors — only years with actual API data
-export const years: number[] = [2023];
+// Full year range: GVA trend 2016-2023, Season C 2021-2022, Season A+B 2023
+export const years: number[] = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023];
 
 // ---------------------------------------------------------------------------
 // Live data store — populated exclusively from NISR API calls in nisr.ts

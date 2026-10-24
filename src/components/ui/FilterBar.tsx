@@ -36,7 +36,7 @@ export default function FilterBar({ cropId, season, year, onCropChange, onSeason
         <div className="flex flex-col">
           <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Season</label>
           <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-            {(['A', 'B'] as Season[]).map((s) => (
+            {(['A', 'B', 'C'] as Season[]).map((s) => (
               <button
                 key={s}
                 onClick={() => onSeasonChange(s)}
