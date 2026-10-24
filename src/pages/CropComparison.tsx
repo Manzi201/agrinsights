@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Season } from '../types/agriculture';
-import { crops, districts, getAvailableYears, getLatestYear, getAllData } from '../services/agricultureData';
+import { crops, districts, getAvailableYears, getAllData } from '../services/agricultureData';
 import { compareCrops, formatNumber } from '../utils/calculations';
 import ComparisonChart from '../components/charts/ComparisonChart';
 import type { ComparisonDataItem } from '../components/charts/ComparisonChart';
@@ -15,40 +15,73 @@ export default function CropComparison() {
   const dataVersion = useDataVersion();
   const { isDark } = useTheme();
 
-  // Dynamic year from store — only years with real data
-  const availableYears = getAvailableYears();
-  const latestYear     = getLatestYear();
-  const [season, setSeason]   = useState<Season>('A');
-  const [year, setYear]       = useState<number>(() => getLatestYear());
-
-  // Keep year in sync with available years when data loads
-  const safeYear = availableYears.includes(year) ? year : latestYear;
-
-  // Default selected crops = first two crops that have data in store
+  // ── Dynamic crop list from live store (only crops that actually have data) ──
   const cropsWithData = useMemo(() => {
-    const data = getAllData();
-    const ids  = new Set(data.map((dp) => dp.cropId));
+    const ids = new Set(getAllData().map((dp) => dp.cropId));
     return crops.filter((c) => ids.has(c.id));
   }, [dataVersion]);
 
-  const [selectedCrops, setSelectedCrops] = useState<string[]>(() => {
-    const data = getAllData();
-    const ids  = [...new Set(data.map((dp) => dp.cropId))];
-    return ids.slice(0, 2);
-  });
-  const [selectedDistricts, setSelectedDistricts] = useState<string[]>(['musanze', 'nyagatare']);
+  // ── Season state ──────────────────────────────────────────────────────────
+  const [season, setSeason] = useState<Season>('A');
 
-  const toggleCrop = (id: string) => {
+  // ── Years — dynamic per season, no hardcoding ─────────────────────────────
+  const availableYears = useMemo(
+    () => getAvailableYears(undefined, season),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [season, dataVersion],
+  );
+
+  const [year, setYear] = useState<number>(
+    () => getAvailableYears(undefined, 'A').at(-1) ?? 2023,
+  );
+
+  // Snap year whenever season or data changes
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(year)) {
+      setYear(availableYears[availableYears.length - 1]);
+    }
+  }, [availableYears, year]);
+
+  const safeYear = availableYears.includes(year) ? year : (availableYears.at(-1) ?? year);
+
+  // ── Crop selection — default to first two crops from live store ───────────
+  const [selectedCrops, setSelectedCrops] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Once data loads, default to first two crops that have data
+    if (selectedCrops.length === 0 && cropsWithData.length >= 2) {
+      setSelectedCrops([cropsWithData[0].id, cropsWithData[1].id]);
+    }
+  }, [cropsWithData, selectedCrops.length]);
+
+  // ── District selection — default to first two districts with data ─────────
+  const districtsWithData = useMemo(() => {
+    const ids = new Set(getAllData().filter((dp) => dp.season === season && dp.year === safeYear).map((dp) => dp.districtId));
+    // Show all 30 districts but order: districts with data first
+    return [...districts].sort((a, b) => {
+      const aHas = ids.has(a.id) ? 0 : 1;
+      const bHas = ids.has(b.id) ? 0 : 1;
+      return aHas - bHas;
+    });
+  }, [season, safeYear, dataVersion]);
+
+  const [selectedDistricts, setSelectedDistricts] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (selectedDistricts.length === 0 && districtsWithData.length >= 2) {
+      setSelectedDistricts([districtsWithData[0].id, districtsWithData[1].id]);
+    }
+  }, [districtsWithData, selectedDistricts.length]);
+
+  const toggleCrop = (id: string) =>
     setSelectedCrops((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : prev.length < 4 ? [...prev, id] : prev,
     );
-  };
 
-  const toggleDistrict = (id: string) => {
+  const toggleDistrict = (id: string) =>
     setSelectedDistricts((prev) =>
       prev.includes(id) ? prev.filter((d) => d !== id) : prev.length < 4 ? [...prev, id] : prev,
     );
-  };
 
   const cs = {
     grid: isDark ? '#374151' : '#e5e7eb',
@@ -62,9 +95,9 @@ export default function CropComparison() {
     },
   };
 
-  // Comparison data for chart
+  // ── Chart data ────────────────────────────────────────────────────────────
   const chartData = useMemo<ComparisonDataItem[]>(() => {
-    if (selectedCrops.length === 0 || selectedDistricts.length === 0) return [];
+    if (!selectedCrops.length || !selectedDistricts.length) return [];
     const results = compareCrops(selectedCrops, selectedDistricts, season, safeYear);
     const byDistrict = new Map<string, ComparisonDataItem>();
     for (const r of results) {
@@ -75,81 +108,85 @@ export default function CropComparison() {
   }, [selectedCrops, selectedDistricts, season, safeYear, dataVersion]);
 
   const tableData = useMemo(() => {
-    if (selectedCrops.length === 0 || selectedDistricts.length === 0) return [];
+    if (!selectedCrops.length || !selectedDistricts.length) return [];
     return compareCrops(selectedCrops, selectedDistricts, season, safeYear);
   }, [selectedCrops, selectedDistricts, season, safeYear, dataVersion]);
 
-  // Trend for first selected district
+  // Year-over-year trend — only if multiple years available for this season
   const trendData = useMemo(() => {
-    if (selectedCrops.length === 0 || selectedDistricts.length === 0) return [];
+    if (!selectedCrops.length || !selectedDistricts.length || availableYears.length < 2) return [];
     const districtId = selectedDistricts[0];
     return availableYears.map((y) => {
       const item: Record<string, string | number> = { year: String(y) };
       for (const cropId of selectedCrops) {
-        const results = compareCrops([cropId], [districtId], season, y);
-        item[cropId] = results[0]?.production ?? 0;
+        const r = compareCrops([cropId], [districtId], season, y);
+        item[cropId] = r[0]?.production ?? 0;
       }
       return item;
     });
-  }, [selectedCrops, selectedDistricts, season, dataVersion, availableYears]);
+  }, [selectedCrops, selectedDistricts, season, availableYears, dataVersion]);
 
   const selectCls = 'rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500';
 
+  const dataIds = useMemo(() => {
+    const s = new Set(getAllData().filter((dp) => dp.season === season && dp.year === safeYear).map((dp) => dp.districtId));
+    return s;
+  }, [season, safeYear, dataVersion]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div>
-      {/* Selection panels */}
+      {/* Crop + District selectors */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-        {/* Crop selection — shows ALL crops from NISR store */}
+
+        {/* Crop selection — only crops with NISR data */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">
-            Select Crops (up to 4)
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Select Crops (up to 4)</h3>
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-            {cropsWithData.length} crops available from NISR data
+            {cropsWithData.length} crops found in NISR data
           </p>
-          <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto">
-            {cropsWithData.map((crop) => {
-              const selected = selectedCrops.includes(crop.id);
-              return (
-                <button
-                  key={crop.id}
-                  onClick={() => toggleCrop(crop.id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                    selected
-                      ? 'bg-primary-600 text-white border-primary-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500'
-                  }`}
-                >
-                  {selected && <Check className="w-3 h-3" />}
-                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: crop.color }} />
-                  {crop.name}
-                </button>
-              );
-            })}
-            {cropsWithData.length === 0 && (
-              <p className="text-xs text-gray-400 dark:text-gray-500 py-4">
-                Loading crop data from NISR…
-              </p>
-            )}
-          </div>
+          {cropsWithData.length === 0 ? (
+            <p className="text-xs text-amber-600 dark:text-amber-400 py-2">Loading crop data from NISR…</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
+              {cropsWithData.map((crop) => {
+                const selected = selectedCrops.includes(crop.id);
+                return (
+                  <button key={crop.id} onClick={() => toggleCrop(crop.id)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      selected
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-primary-400'
+                    }`}
+                  >
+                    {selected && <Check className="w-3 h-3" />}
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: crop.color }} />
+                    {crop.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* District selection */}
+        {/* District selection — ordered by data availability */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-5">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
-            Select Districts (up to 4)
-          </h3>
-          <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto">
-            {districts.map((d) => {
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Select Districts (up to 4)</h3>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+            Districts with data shown first
+          </p>
+          <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
+            {districtsWithData.map((d) => {
               const selected = selectedDistricts.includes(d.id);
+              const hasData  = dataIds.has(d.id);
               return (
-                <button
-                  key={d.id}
-                  onClick={() => toggleDistrict(d.id)}
+                <button key={d.id} onClick={() => toggleDistrict(d.id)}
                   className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${
                     selected
                       ? 'bg-primary-600 text-white border-primary-600'
-                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-primary-400'
+                      : hasData
+                        ? 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-primary-400'
+                        : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700'
                   }`}
                 >
                   {selected && <Check className="w-3 h-3" />}
@@ -161,7 +198,7 @@ export default function CropComparison() {
         </div>
       </div>
 
-      {/* Season & Year — only available years shown */}
+      {/* Season + Year — fully dynamic */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 sm:p-4 mb-4 sm:mb-6">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-col">
@@ -169,31 +206,45 @@ export default function CropComparison() {
             <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
               {(['A', 'B', 'C'] as Season[]).map((s) => (
                 <button key={s} onClick={() => setSeason(s)}
-                  className={`px-4 py-2 text-sm font-medium ${
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
                     season === s ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                  }`}>
+                  }`}
+                >
                   {s}
                 </button>
               ))}
             </div>
           </div>
+
           <div className="flex flex-col">
             <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Year</label>
-            <select value={safeYear} onChange={(e) => setYear(Number(e.target.value))} className={selectCls}>
-              {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
+            {availableYears.length > 0 ? (
+              <select value={safeYear} onChange={(e) => setYear(Number(e.target.value))} className={selectCls}>
+                {availableYears.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            ) : (
+              <span className="px-3 py-2 text-xs rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-300">
+                No data for Season {season}
+              </span>
+            )}
           </div>
-          {availableYears.length === 1 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-4">
-              Only {availableYears[0]} data available from NISR
+
+          <div className="flex flex-col justify-end">
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              Source: NISR PXWeb API · {availableYears.length} year{availableYears.length !== 1 ? 's' : ''} available
             </p>
-          )}
+          </div>
         </div>
       </div>
 
-      {selectedCrops.length === 0 || selectedDistricts.length === 0 ? (
+      {/* Empty state */}
+      {(!selectedCrops.length || !selectedDistricts.length) ? (
         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-500 dark:text-gray-400 text-sm">
-          Select at least one crop and one district to see the comparison.
+          {cropsWithData.length === 0
+            ? 'Loading NISR data…'
+            : 'Select at least one crop and one district to see the comparison.'}
         </div>
       ) : (
         <>
@@ -202,12 +253,13 @@ export default function CropComparison() {
             <ComparisonChart data={chartData} selectedCropIds={selectedCrops} />
           </div>
 
-          {/* Year-over-year trend — only shown when multiple years exist */}
+          {/* Year-over-year trend — only if multiple years exist for this season */}
           {availableYears.length > 1 && selectedDistricts.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 mb-4 sm:mb-6">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">
                 Year-over-Year Trend — {districts.find((d) => d.id === selectedDistricts[0])?.name}
               </h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Season {season} · {availableYears.join(', ')}</p>
               <div style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={trendData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
@@ -221,7 +273,7 @@ export default function CropComparison() {
                       return (
                         <Line key={cropId} type="monotone" dataKey={cropId}
                           name={crop?.name ?? cropId} stroke={crop?.color ?? '#16a34a'}
-                          strokeWidth={2} dot={{ r: 3 }} />
+                          strokeWidth={2} dot={{ r: 4 }} />
                       );
                     })}
                   </LineChart>
@@ -248,14 +300,14 @@ export default function CropComparison() {
               <tbody>
                 {tableData.length === 0 ? (
                   <tr><td colSpan={5} className="py-6 text-center text-gray-400 dark:text-gray-500 text-xs">
-                    No data for the selected combination. NISR may not have data for all crops in all districts.
+                    No data for this combination in NISR.
                   </td></tr>
                 ) : tableData.map((row, i) => (
                   <tr key={i} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                     <td className="py-2 px-3 text-gray-700 dark:text-gray-200">{row.districtName}</td>
                     <td className="py-2 px-3">
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: crops.find((c) => c.id === row.cropId)?.color }} />
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: crops.find((c) => c.id === row.cropId)?.color }} />
                         {row.cropName}
                       </span>
                     </td>
