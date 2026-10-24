@@ -183,7 +183,7 @@ function combineAreaYield(areaResp: PxResp, yieldResp: PxResp): DataPoint[] {
   }
 
   const points: DataPoint[] = [];
-  for (const key of new Set([...areaMap.keys(), ...yieldMap.keys()])) {
+  for (const key of Array.from(new Set([...Array.from(areaMap.keys()), ...Array.from(yieldMap.keys())]))) {
     const [season, districtId, cropId] = key.split('|');
     const area    = areaMap.get(key)  ?? 0;
     const yieldKg = yieldMap.get(key) ?? 0;
@@ -484,11 +484,11 @@ export function getProductionTrend(cropId: string, season: Season): TrendPoint[]
   const scale      = gva2023 > 0 && prod2023 > 0 ? prod2023 / gva2023 : 0;
 
   const allYears = new Set<number>([
-    ...liveByYear.keys(),
+    ...Array.from(liveByYear.keys()),
     ...gvaForCrop.map((g) => g.year),
   ]);
 
-  return [...allYears].sort().map((year) => {
+  return Array.from(allYears).sort().map((year) => {
     if (liveByYear.has(year)) {
       const { production, area } = liveByYear.get(year)!;
       return { year: String(year), production: Math.round(production), area: Math.round(area), yield: area > 0 ? Math.round((production / area) * 100) / 100 : 0 };

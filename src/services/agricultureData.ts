@@ -120,7 +120,7 @@ export function getAvailableYears(cropId?: string, season?: string): number[] {
   // Then filter by crop if specified
   if (cropId) filtered = filtered.filter((dp) => dp.cropId === cropId);
 
-  const yrs = [...new Set(filtered.map((dp) => dp.year))].sort((a, b) => a - b);
+  const yrs = Array.from(new Set(filtered.map((dp) => dp.year))).sort((a, b) => a - b);
   return yrs.length > 0 ? yrs : (season ? [] : [2023]);
 }
 
