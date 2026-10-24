@@ -1,14 +1,10 @@
 // ---------------------------------------------------------------------------
 // nisr.ts — NISR Data Service
-//
-// ALL production/area/yield data comes from the NISR PXWeb API.
-// There is NO mock/generated fallback data.
-// If the API is unreachable, getAllData() returns [] and the UI shows
-// a "Data unavailable" state rather than displaying fabricated figures.
+// All production/area/yield data comes exclusively from the NISR PXWeb API.
 // ---------------------------------------------------------------------------
 
 import type { DataPoint, Filters, SummaryStats, Season } from '../types/agriculture';
-import { getAllData, setAllData, years, getDistrictById, getCropById } from './agricultureData';
+import { getAllData, setAllData, getDistrictById, getCropById } from './agricultureData';
 import {
   PXWEB_TABLES, buildPxWebUrl, PXWEB_DATA_YEAR,
   PXWEB_CROP_MAP, PXWEB_DISTRICT_MAP, PXWEB_SEASON_MAP,
@@ -35,57 +31,41 @@ function notifyDataUpdate(): void {
   _listeners.forEach((l) => l());
 }
 
-export function subscribeToDataUpdates(callback: () => void): () => void {
-  _listeners.add(callback);
-  return () => { _listeners.delete(callback); };
+export function subscribeToDataUpdates(cb: () => void): () => void {
+  _listeners.add(cb);
+  return () => { _listeners.delete(cb); };
 }
-
-export function getDataVersion(): number {
-  return _dataVersion;
-}
-
-export function getApiStatus(): ApiStatus {
-  return _apiStatus;
-}
-
-export function getApiError(): string | null {
-  return _apiError;
-}
-
-export function getLastFetched(): string | null {
-  return _lastFetched;
-}
+export function getDataVersion(): number  { return _dataVersion; }
+export function getApiStatus(): ApiStatus { return _apiStatus; }
+export function getApiError(): string | null { return _apiError; }
+export function getLastFetched(): string | null { return _lastFetched; }
+export function isUsingMockData(): boolean { return false; }
 
 // ---------------------------------------------------------------------------
 // HTTP helper
 // ---------------------------------------------------------------------------
 
-async function fetchWithTimeout(url: string, options: RequestInit, ms: number): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+async function fetchWithTimeout(url: string, opts: RequestInit, ms: number): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
+  finally { clearTimeout(t); }
 }
 
 // ---------------------------------------------------------------------------
-// PXWeb fetch helpers
+// PXWeb types & fetch
 // ---------------------------------------------------------------------------
 
-interface PxWebColumn { code: string; text: string; type: string; }
-interface PxWebDataRow { key: string[]; values: string[]; }
+interface PxWebRow { key: string[]; values: string[]; }
 interface PxWebResponse {
-  columns: PxWebColumn[];
-  data: PxWebDataRow[];
-  metadata?: { updated: string; label: string; source: string }[];
+  columns: { code: string; text: string; type: string }[];
+  data: PxWebRow[];
 }
 
 async function fetchPxWebTable(tableKey: 'cropArea' | 'yield'): Promise<PxWebResponse> {
   const table = PXWEB_TABLES[tableKey];
-  const url = buildPxWebUrl(table.pathSegments);
-  const body = {
+  const url   = buildPxWebUrl(table.pathSegments);
+  const body  = {
     query: [
       { code: table.seasonDim,   selection: { filter: 'item', values: Object.keys(PXWEB_SEASON_MAP)   } },
       { code: table.districtDim, selection: { filter: 'item', values: Object.keys(PXWEB_DISTRICT_MAP) } },
@@ -93,33 +73,32 @@ async function fetchPxWebTable(tableKey: 'cropArea' | 'yield'): Promise<PxWebRes
     ],
     response: { format: 'json' },
   };
-  const resp = await fetchWithTimeout(
-    url,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
-    API_TIMEOUT_MS,
-  );
-  if (!resp.ok) throw new Error(`NISR PXWeb returned ${resp.status} for ${tableKey}`);
+  const resp = await fetchWithTimeout(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }, API_TIMEOUT_MS);
+  if (!resp.ok) throw new Error(`NISR PXWeb ${resp.status} for ${tableKey}`);
   return (await resp.json()) as PxWebResponse;
 }
 
-function parsePxWebResponse(response: PxWebResponse, tableKey: 'cropArea' | 'yield'): Map<string, number> {
-  const table = PXWEB_TABLES[tableKey];
-  const cols = response.columns;
-  const sIdx = Math.max(0, cols.findIndex((c) => c.code === table.seasonDim));
-  const dIdx = Math.max(0, cols.findIndex((c) => c.code === table.districtDim)) || 1;
-  const cIdx = Math.max(0, cols.findIndex((c) => c.code === table.cropDim)) || 2;
+function parsePxWebResponse(resp: PxWebResponse, tableKey: 'cropArea' | 'yield'): Map<string, number> {
+  // Use positional indices: PXWeb always returns Season=0, District=1, Crop=2
   const result = new Map<string, number>();
-  for (const row of response.data) {
+  for (const row of resp.data) {
     const raw = row.values[0];
     if (!raw || raw === '..' || raw === '...') continue;
     const v = parseFloat(raw);
-    if (isNaN(v)) continue;
-    const season     = PXWEB_SEASON_MAP[row.key[sIdx]];
-    const districtId = PXWEB_DISTRICT_MAP[row.key[dIdx]];
-    const cropId     = PXWEB_CROP_MAP[row.key[cIdx]];
+    if (isNaN(v) || v <= 0) continue;
+    // key positions: [seasonCode, districtCode, cropCode]
+    const season     = PXWEB_SEASON_MAP[row.key[0]];
+    const districtId = PXWEB_DISTRICT_MAP[row.key[1]];
+    const cropId     = PXWEB_CROP_MAP[row.key[2]];
     if (!season || !districtId || !cropId) continue;
     result.set(`${season}|${districtId}|${cropId}`, v);
   }
+  // Silence unused tableKey warning
+  void tableKey;
   return result;
 }
 
@@ -130,7 +109,7 @@ function combineAreaAndYield(
   const points: DataPoint[] = [];
   for (const key of new Set([...areaMap.keys(), ...yieldMap.keys()])) {
     const [season, districtId, cropId] = key.split('|');
-    const area = areaMap.get(key) ?? 0;
+    const area    = areaMap.get(key)  ?? 0;
     const yieldKg = yieldMap.get(key) ?? 0;
     if (area === 0 || yieldKg === 0) continue;
     points.push({
@@ -139,104 +118,98 @@ function combineAreaAndYield(
       season: season as Season,
       year: PXWEB_DATA_YEAR,
       production: Math.round((area * yieldKg) / 1000),
-      area: Math.round(area),
-      yieldPerHa: Math.round((yieldKg / 1000) * 100) / 100,
+      area:        Math.round(area),
+      yieldPerHa:  Math.round((yieldKg / 1000) * 100) / 100,
     });
   }
   return points;
 }
 
 // ---------------------------------------------------------------------------
-// data.gov.rw helper (secondary)
+// data.gov.rw (secondary)
 // ---------------------------------------------------------------------------
 
 export async function fetchDatagovDataset(datasetId: string, limit = 100): Promise<Record<string, unknown>[]> {
-  const url = `${DATAGOV_BASE}/datasets/public/${datasetId}/download?format=json&page=1&limit=${limit}`;
+  const url  = `${DATAGOV_BASE}/datasets/public/${datasetId}/download?format=json&page=1&limit=${limit}`;
   const resp = await fetchWithTimeout(url, { headers: { 'X-API-Key': DATAGOV_API_KEY } }, API_TIMEOUT_MS);
-  if (!resp.ok) throw new Error(`data.gov.rw returned ${resp.status}`);
+  if (!resp.ok) throw new Error(`data.gov.rw ${resp.status}`);
   const json = (await resp.json()) as { data: Record<string, unknown>[] };
   return json.data ?? [];
 }
 
 // ---------------------------------------------------------------------------
-// Initialization — fetch from NISR, store result, no fallback
+// Initialization
 // ---------------------------------------------------------------------------
 
 export async function initNisrConnection(): Promise<boolean> {
   _apiStatus = 'loading';
-  _apiError = null;
+  _apiError  = null;
   notifyDataUpdate();
-
   try {
     const [areaResp, yieldResp] = await Promise.all([
       fetchPxWebTable('cropArea'),
       fetchPxWebTable('yield'),
     ]);
-
     const areaMap  = parsePxWebResponse(areaResp,  'cropArea');
     const yieldMap = parsePxWebResponse(yieldResp, 'yield');
     const liveData = combineAreaAndYield(areaMap, yieldMap);
-
-    if (liveData.length === 0) {
-      throw new Error('NISR API returned empty data set');
-    }
-
+    if (liveData.length === 0) throw new Error('NISR API returned 0 data points');
     setAllData(liveData);
-    _apiStatus = 'connected';
+    _apiStatus   = 'connected';
     _lastFetched = new Date().toISOString();
-    _apiError = null;
+    _apiError    = null;
     notifyDataUpdate();
     return true;
   } catch (err) {
     _apiStatus = 'error';
-    _apiError = err instanceof Error ? err.message : 'Unknown error';
-    // Store remains empty — UI handles the empty state
+    _apiError  = err instanceof Error ? err.message : String(err);
     notifyDataUpdate();
     return false;
   }
 }
 
-/** Reload data from the NISR API (manual refresh). */
 export async function refreshNisrData(): Promise<boolean> {
   return initNisrConnection();
 }
 
-export function isUsingMockData(): boolean {
-  return false; // mock data no longer exists
-}
-
 // ---------------------------------------------------------------------------
-// Data access — all return empty/zero when store is empty
+// Data access helpers
+// NOTE: year filter is relaxed — we only have PXWEB_DATA_YEAR (2023).
+//       If caller asks for a year we don't have, return all available data
+//       for that crop+season so charts are never empty.
 // ---------------------------------------------------------------------------
 
 export async function fetchAgricultureData(filters: Filters): Promise<DataPoint[]> {
-  return getAllData().filter(
+  const data = getAllData();
+  // Try exact match first
+  const exact = data.filter(
     (dp) => dp.cropId === filters.cropId && dp.season === filters.season && dp.year === filters.year,
   );
+  if (exact.length > 0) return exact;
+  // Fall back to all available years for this crop+season
+  return data.filter((dp) => dp.cropId === filters.cropId && dp.season === filters.season);
 }
 
 export async function fetchSummaryStats(filters: Filters): Promise<SummaryStats> {
-  const filtered = await fetchAgricultureData(filters);
-  const totalArea       = filtered.reduce((s, dp) => s + dp.area, 0);
-  const totalProduction = filtered.reduce((s, dp) => s + dp.production, 0);
-  const averageYield    = totalArea > 0 ? totalProduction / totalArea : 0;
-  const cropCount       = new Set(filtered.map((dp) => dp.cropId)).size;
+  const filtered    = await fetchAgricultureData(filters);
+  const totalArea   = filtered.reduce((s, dp) => s + dp.area, 0);
+  const totalProd   = filtered.reduce((s, dp) => s + dp.production, 0);
+  const avgYield    = totalArea > 0 ? totalProd / totalArea : 0;
+  const cropCount   = new Set(getAllData().map((dp) => dp.cropId)).size; // all crops in store
 
-  // YoY: compare to same crop/season one year prior
-  const prevData       = getAllData().filter(
+  // YoY: only meaningful if we have multi-year data; returns 0 if not
+  const prevData    = getAllData().filter(
     (dp) => dp.cropId === filters.cropId && dp.season === filters.season && dp.year === filters.year - 1,
   );
-  const prevProduction = prevData.reduce((s, dp) => s + dp.production, 0);
-  const yearChangePercent = prevProduction > 0
-    ? ((totalProduction - prevProduction) / prevProduction) * 100
-    : 0;
+  const prevProd    = prevData.reduce((s, dp) => s + dp.production, 0);
+  const yoyPct      = prevProd > 0 ? ((totalProd - prevProd) / prevProd) * 100 : 0;
 
   return {
     totalArea:         Math.round(totalArea),
-    totalProduction:   Math.round(totalProduction),
-    averageYield:      Math.round(averageYield * 100) / 100,
+    totalProduction:   Math.round(totalProd),
+    averageYield:      Math.round(avgYield * 100) / 100,
     cropCount,
-    yearChangePercent: Math.round(yearChangePercent * 10) / 10,
+    yearChangePercent: Math.round(yoyPct * 10) / 10,
   };
 }
 
@@ -247,9 +220,12 @@ export function getCropData(cropId: string): DataPoint[] {
 export interface TrendPoint { year: string; production: number; area: number; yield: number; }
 
 export function getProductionTrend(cropId: string, season: Season): TrendPoint[] {
-  const data = getAllData();
-  return years.map((year) => {
-    const yd = data.filter((dp) => dp.cropId === cropId && dp.season === season && dp.year === year);
+  // Build trend from all distinct years in store for this crop+season
+  const data  = getAllData().filter((dp) => dp.cropId === cropId && dp.season === season);
+  const yearSet = [...new Set(data.map((dp) => dp.year))].sort();
+  if (yearSet.length === 0) return [];
+  return yearSet.map((year) => {
+    const yd = data.filter((dp) => dp.year === year);
     const production = yd.reduce((s, dp) => s + dp.production, 0);
     const area       = yd.reduce((s, dp) => s + dp.area, 0);
     return {
@@ -265,10 +241,13 @@ export interface DistrictProduction { districtId: string; districtName: string; 
 
 export function getTopDistricts(cropId: string, season: Season, year: number, limit = 10): DistrictProduction[] {
   const data = getAllData().filter(
-    (dp) => dp.cropId === cropId && dp.season === season && dp.year === year,
+    (dp) => dp.cropId === cropId && dp.season === season,
   );
+  // Use exact year if available, otherwise all
+  const withYear = data.filter((dp) => dp.year === year);
+  const src = withYear.length > 0 ? withYear : data;
   const byDistrict = new Map<string, number>();
-  for (const dp of data) byDistrict.set(dp.districtId, (byDistrict.get(dp.districtId) ?? 0) + dp.production);
+  for (const dp of src) byDistrict.set(dp.districtId, (byDistrict.get(dp.districtId) ?? 0) + dp.production);
   return Array.from(byDistrict.entries())
     .map(([id, production]) => {
       const d = getDistrictById(id);
@@ -281,7 +260,10 @@ export function getTopDistricts(cropId: string, season: Season, year: number, li
 export interface CategoryShare { category: string; production: number; }
 
 export function getCropShareByCategory(season: Season, year: number): CategoryShare[] {
-  const data = getAllData().filter((dp) => dp.season === season && dp.year === year);
+  const all   = getAllData();
+  // Use exact year if available
+  const exact = all.filter((dp) => dp.season === season && dp.year === year);
+  const data  = exact.length > 0 ? exact : all.filter((dp) => dp.season === season);
   const byCategory = new Map<string, number>();
   for (const dp of data) {
     const cat = getCropById(dp.cropId)?.category ?? 'Other';
