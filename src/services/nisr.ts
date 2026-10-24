@@ -115,17 +115,29 @@ const LAND_USE_MAP: Record<string, string> = {
 
 // ─── Supplementary data stores ────────────────────────────────────────────────
 
-export interface GvaPoint       { cropId: string; cropName: string; year: number; gva: number; }
-export interface PracticePoint  { season: string; districtId: string; districtName: string; practice: string; areaHa: number; }
-export interface LandUsePoint   { season: string; districtId: string; districtName: string; landUse: string; areaThousandHa: number; }
+export interface GvaPoint        { cropId: string; cropName: string; year: number; gva: number; }
+export interface PracticePoint   { season: string; districtId: string; districtName: string; practice: string; areaHa: number; }
+export interface LandUsePoint    { season: string; districtId: string; districtName: string; landUse: string; areaThousandHa: number; }
+export interface HarvestPoint    { season: string; districtId: string; districtName: string; cropId: string; cropName: string; harvestedHa: number; cultivatedHa: number; harvestRatio: number; }
+export interface LargeScaleYield { season: string; districtId: string; districtName: string; cropId: string; cropName: string; yieldKgPerHa: number; }
+export interface CashAreaPoint   { category: string; crop: 'Coffee' | 'Tea'; isActive: boolean; year: number; areaThousandHa: number | null; }
+export interface CashProdPoint   { crop: 'Coffee' | 'Tea'; year: number; productionTons: number; }
 
-let _gvaData:      GvaPoint[]      = [];
-let _practiceData: PracticePoint[] = [];
-let _landUseData:  LandUsePoint[]  = [];
+let _gvaData:        GvaPoint[]        = [];
+let _practiceData:   PracticePoint[]   = [];
+let _landUseData:    LandUsePoint[]    = [];
+let _harvestData:    HarvestPoint[]    = [];
+let _largeScaleData: LargeScaleYield[] = [];
+let _cashAreaData:   CashAreaPoint[]   = [];
+let _cashProdData:   CashProdPoint[]   = [];
 
-export function getGvaData():      GvaPoint[]      { return _gvaData; }
-export function getPracticeData(): PracticePoint[] { return _practiceData; }
-export function getLandUseData():  LandUsePoint[]  { return _landUseData; }
+export function getGvaData():        GvaPoint[]        { return _gvaData; }
+export function getPracticeData():   PracticePoint[]   { return _practiceData; }
+export function getLandUseData():    LandUsePoint[]    { return _landUseData; }
+export function getHarvestData():    HarvestPoint[]    { return _harvestData; }
+export function getLargeScaleData(): LargeScaleYield[] { return _largeScaleData; }
+export function getCashAreaData():   CashAreaPoint[]   { return _cashAreaData; }
+export function getCashProdData():   CashProdPoint[]   { return _cashProdData; }
 
 // ─── Table fetchers ───────────────────────────────────────────────────────────
 
@@ -218,6 +230,98 @@ async function fetchGva(): Promise<GvaPoint[]> {
   return pts;
 }
 
+// ─── Harvested area (havest.px) ───────────────────────────────────────────────
+
+async function fetchHarvest(): Promise<HarvestPoint[]> {
+  const resp = await postPx(crop('havest.px'), { query: [], response: { format: 'json' } });
+  // Build a cultivated area lookup from the existing store for harvest ratio
+  const cultivatedMap = new Map<string, number>();
+  for (const dp of getAllData()) cultivatedMap.set(`${dp.season}|${dp.districtId}|${dp.cropId}`, dp.area);
+
+  const pts: HarvestPoint[] = [];
+  for (const row of resp.data) {
+    const harvestedHa = numVal(row); if (!harvestedHa) continue;
+    const season     = SEAS[row.key[0]];
+    const districtId = DIST[row.key[1]];
+    const cropId     = CROP_MAP[row.key[2]];
+    if (!season || !districtId || !cropId) continue;
+    const d = getDistrictById(districtId);
+    const c = getCropById(cropId);
+    const cultivatedHa = cultivatedMap.get(`${season}|${districtId}|${cropId}`) ?? 0;
+    const harvestRatio = cultivatedHa > 0 ? Math.round((harvestedHa / cultivatedHa) * 1000) / 10 : 0;
+    pts.push({ season, districtId, districtName: d?.name ?? districtId, cropId, cropName: c?.name ?? cropId, harvestedHa: Math.round(harvestedHa), cultivatedHa: Math.round(cultivatedHa), harvestRatio });
+  }
+  return pts;
+}
+
+// ─── Large-scale farmer yield (Lager.px) ─────────────────────────────────────
+
+const LAGER_DIST: Record<string, string> = { ...DIST }; // same 30-district codes (0-29); positions 30,31,32 = LSF,National,SSF — skip
+
+async function fetchLargeScale(): Promise<LargeScaleYield[]> {
+  const resp = await postPx(crop('Lager.px'), { query: [], response: { format: 'json' } });
+  const pts: LargeScaleYield[] = [];
+  for (const row of resp.data) {
+    const yieldKg = numVal(row); if (!yieldKg) continue;
+    const season     = SEAS[row.key[0]];
+    const districtId = LAGER_DIST[row.key[1]]; // skip codes 30-32 (LSF/National/SSF)
+    const cropId     = CROP_MAP[row.key[2]];
+    if (!season || !districtId || !cropId) continue;
+    const d = getDistrictById(districtId);
+    const c = getCropById(cropId);
+    pts.push({ season, districtId, districtName: d?.name ?? districtId, cropId, cropName: c?.name ?? cropId, yieldKgPerHa: Math.round(yieldKg) });
+  }
+  return pts;
+}
+
+// ─── Cash crop land area (_cashcrop.px) ───────────────────────────────────────
+
+const CASH_AREA_CAT: Record<string, { label: string; crop: 'Coffee' | 'Tea'; isActive: boolean }> = {
+  '0': { label: 'Total Coffee area',         crop: 'Coffee', isActive: false },
+  '1': { label: 'Coffee under production',   crop: 'Coffee', isActive: true  },
+  '2': { label: 'Total tea area',            crop: 'Tea',    isActive: false },
+  '3': { label: 'Tea area under production', crop: 'Tea',    isActive: true  },
+};
+const CASH_AREA_YEAR: Record<string, number> = { '0': 2014, '1': 2015, '2': 2016, '3': 2017, '4': 2018, '5': 2019, '6': 2020 };
+
+async function fetchCashCropArea(): Promise<CashAreaPoint[]> {
+  const resp = await postPx(crop('_cashcrop.px'), { query: [], response: { format: 'json' } });
+  const pts: CashAreaPoint[] = [];
+  for (const row of resp.data) {
+    const meta = CASH_AREA_CAT[row.key[0]];
+    const year = CASH_AREA_YEAR[row.key[1]];
+    if (!meta || !year) continue;
+    const raw = row.values[0];
+    const area: number | null = (!raw || raw === '..' || raw === '...') ? null : parseFloat(raw);
+    pts.push({ category: meta.label, crop: meta.crop, isActive: meta.isActive, year, areaThousandHa: area });
+  }
+  return pts;
+}
+
+// ─── Cash crop production (cash_crop.px) ──────────────────────────────────────
+
+const CASH_PROD_CROP: Record<string, 'Coffee' | 'Tea'> = { '0': 'Coffee', '1': 'Tea' };
+const CASH_PROD_YEAR: Record<string, number> = { '0': 2016, '1': 2017, '2': 2018, '3': 2019, '4': 2020, '5': 2021, '6': 2022 };
+
+async function fetchCashCropProd(): Promise<CashProdPoint[]> {
+  const resp = await postPx([...CASH_DIR, 'cash_crop.px'], {
+    query: [
+      { code: 'crops', selection: { filter: 'item', values: ['0', '1'] } },
+      { code: 'Years', selection: { filter: 'item', values: Object.keys(CASH_PROD_YEAR) } },
+    ],
+    response: { format: 'json' },
+  });
+  const pts: CashProdPoint[] = [];
+  for (const row of resp.data) {
+    const v = numVal(row); if (!v) continue;
+    const c = CASH_PROD_CROP[row.key[0]];
+    const y = CASH_PROD_YEAR[row.key[1]];
+    if (!c || !y) continue;
+    pts.push({ crop: c, year: y, productionTons: Math.round(v) });
+  }
+  return pts;
+}
+
 async function fetchPractices(): Promise<PracticePoint[]> {
   const resp = await postPx([...PRAC_DIR, 'pratice.px'], { query: [], response: { format: 'json' } });
   const pts: PracticePoint[] = [];
@@ -301,6 +405,18 @@ export async function initNisrConnection(): Promise<boolean> {
 
     await sleep(600);
     try { _landUseData = await fetchLandUse(); } catch { /* land use non-critical */ }
+
+    await sleep(600);
+    try { _harvestData = await fetchHarvest(); } catch { /* harvest non-critical */ }
+
+    await sleep(600);
+    try { _largeScaleData = await fetchLargeScale(); } catch { /* large scale non-critical */ }
+
+    await sleep(600);
+    try { _cashAreaData = await fetchCashCropArea(); } catch { /* cash area non-critical */ }
+
+    await sleep(600);
+    try { _cashProdData = await fetchCashCropProd(); } catch { /* cash prod non-critical */ }
 
     bump(); // final update with all supplementary data
     return true;
