@@ -162,7 +162,7 @@ function computePostHarvestData(): CropSummaryRow[] {
     .filter((c) => ratioMap.has(c.id))
     .map((c) => {
       const r = ratioMap.get(c.id)!;
-      const harvestRatio = r.cultivatedHa > 0 ? Math.round((r.harvestedHa / r.cultivatedHa) * 1000) / 10 : 0;
+      const harvestRatio = r.cultivatedHa > 0 ? Math.min(100, Math.round((r.harvestedHa / r.cultivatedHa) * 1000) / 10) : 0;
       return {
         name: c.name,
         color: c.color,
@@ -634,7 +634,7 @@ function ProductivityTab({ cropGrowth, scaleComparison }: { cropGrowth: CropGrow
       />
 
       {/* Large-scale vs small-scale yield comparison */}
-      {scaleComparison.length > 0 && (
+      {scaleComparison.length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
           <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Large-Scale vs Small-Scale Farmer Yield</h4>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Intensification opportunity: where large-scale yield significantly exceeds small-scale yield, technology transfer can close the gap.</p>
@@ -652,6 +652,8 @@ function ProductivityTab({ cropGrowth, scaleComparison }: { cropGrowth: CropGrow
             </ResponsiveContainer>
           </div>
         </div>
+      ) : (
+        <p className="text-xs text-gray-400 dark:text-gray-500 italic">Large-scale yield data loading...</p>
       )}
     </div>
   );

@@ -173,7 +173,7 @@ export default function Reports() {
       `Districts: ${selectedDistricts.length === 0 ? 'All' : selectedDistricts.length}`,
       `Crops: ${selectedCrops.length === 0 ? 'All' : selectedCrops.length}`,
       `Seasons: ${selectedSeasons.length === 0 ? 'All' : selectedSeasons.join(', ')}`,
-      `getAvailableYears(): ${selectedYears.length === 0 ? 'All' : selectedYears.join(', ')}`,
+      `Years: ${selectedYears.length === 0 ? 'All' : selectedYears.join(', ')}`,
     ];
 
     const tableHeaders = ['District', 'Crop', 'Season', 'Year', 'Prod (t)', 'Area (ha)', 'Yield'];
@@ -270,10 +270,10 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* getAvailableYears() */}
+          {/* Years */}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">
-              getAvailableYears() (empty = all)
+              Years (empty = all)
             </label>
             <div className="space-y-2">
               {getAvailableYears().map((y) => (
@@ -329,7 +329,7 @@ export default function Reports() {
           </p>
           <p>
             Seasons: {selectedSeasons.length === 0 ? 'All seasons' : selectedSeasons.join(', ')} |
-            getAvailableYears(): {selectedYears.length === 0 ? 'All getAvailableYears()' : selectedYears.join(', ')}
+            Years: {selectedYears.length === 0 ? 'All years' : selectedYears.join(', ')}
           </p>
         </div>
 
