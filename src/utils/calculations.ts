@@ -17,14 +17,11 @@ export function percentChange(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
-/** Get all data points matching the given crop, season, and year.
- *  Falls back to all available years if exact year has no data. */
+/** Get all data points matching the given crop, season, and year — strict match only. */
 export function filterData(cropId: string, season: Season, year: number): DataPoint[] {
-  const all = getAllData();
-  const exact = all.filter(
+  return getAllData().filter(
     (dp) => dp.cropId === cropId && dp.season === season && dp.year === year,
   );
-  return exact.length > 0 ? exact : all.filter((dp) => dp.cropId === cropId && dp.season === season);
 }
 
 /** Aggregate production by district for a given crop, season, and year. */

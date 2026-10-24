@@ -14,7 +14,7 @@ interface FilterBarProps {
 export default function FilterBar({ cropId, season, year, onCropChange, onSeasonChange, onYearChange }: FilterBarProps) {
   // Re-compute available years whenever the data store updates
   useDataVersion();
-  const availableYears = getAvailableYears();
+  const availableYears = getAvailableYears(cropId, season);
 
   const selectCls = [
     'px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full',

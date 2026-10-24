@@ -84,15 +84,22 @@ export function getAllData(): DataPoint[] {
   return _dataStore;
 }
 
-/** Returns the distinct years present in the live store, sorted ascending. */
-export function getAvailableYears(): number[] {
+/** Returns the distinct years present in the live store for a given crop+season, sorted ascending. */
+export function getAvailableYears(cropId?: string, season?: string): number[] {
   if (_dataStore.length === 0) return [2023];
-  return [...new Set(_dataStore.map((dp) => dp.year))].sort((a, b) => a - b);
+  const filtered = cropId || season
+    ? _dataStore.filter((dp) =>
+        (!cropId || dp.cropId === cropId) &&
+        (!season || dp.season === season),
+      )
+    : _dataStore;
+  const yrs = [...new Set(filtered.map((dp) => dp.year))].sort((a, b) => a - b);
+  return yrs.length > 0 ? yrs : [2023];
 }
 
-/** Returns the most recent year in the store. */
-export function getLatestYear(): number {
-  const yrs = getAvailableYears();
+/** Returns the most recent year in the store (or for a specific crop+season). */
+export function getLatestYear(cropId?: string, season?: string): number {
+  const yrs = getAvailableYears(cropId, season);
   return yrs[yrs.length - 1] ?? 2023;
 }
 

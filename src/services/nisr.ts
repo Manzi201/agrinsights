@@ -431,13 +431,11 @@ export async function initNisrConnection(): Promise<boolean> {
 // ─── Data access helpers ──────────────────────────────────────────────────────
 
 export async function fetchAgricultureData(filters: Filters): Promise<DataPoint[]> {
-  const data  = getAllData();
-  const exact = data.filter(
+  const data = getAllData();
+  // Strict: only return exact year — no silent fallback to other years
+  return data.filter(
     (dp) => dp.cropId === filters.cropId && dp.season === filters.season && dp.year === filters.year,
   );
-  return exact.length > 0
-    ? exact
-    : data.filter((dp) => dp.cropId === filters.cropId && dp.season === filters.season);
 }
 
 export async function fetchSummaryStats(filters: Filters): Promise<SummaryStats> {
@@ -504,11 +502,11 @@ export function getProductionTrend(cropId: string, season: Season): TrendPoint[]
 export interface DistrictProduction { districtId: string; districtName: string; province: string; production: number; }
 
 export function getTopDistricts(cropId: string, season: Season, year: number, limit = 10): DistrictProduction[] {
-  const data     = getAllData().filter((dp) => dp.cropId === cropId && dp.season === season);
-  const withYear = data.filter((dp) => dp.year === year);
-  const src      = withYear.length > 0 ? withYear : data;
-  const byDist   = new Map<string, number>();
-  for (const dp of src) byDist.set(dp.districtId, (byDist.get(dp.districtId) ?? 0) + dp.production);
+  const data   = getAllData().filter(
+    (dp) => dp.cropId === cropId && dp.season === season && dp.year === year,
+  );
+  const byDist = new Map<string, number>();
+  for (const dp of data) byDist.set(dp.districtId, (byDist.get(dp.districtId) ?? 0) + dp.production);
   return Array.from(byDist.entries())
     .map(([id, production]) => {
       const d = getDistrictById(id);
@@ -521,11 +519,9 @@ export function getTopDistricts(cropId: string, season: Season, year: number, li
 export interface CategoryShare { category: string; production: number; }
 
 export function getCropShareByCategory(season: Season, year: number): CategoryShare[] {
-  const all   = getAllData();
-  const exact = all.filter((dp) => dp.season === season && dp.year === year);
-  const src   = exact.length > 0 ? exact : all.filter((dp) => dp.season === season);
+  const data  = getAllData().filter((dp) => dp.season === season && dp.year === year);
   const byCat = new Map<string, number>();
-  for (const dp of src) {
+  for (const dp of data) {
     const cat = getCropById(dp.cropId)?.category ?? 'Other';
     byCat.set(cat, (byCat.get(cat) ?? 0) + dp.production);
   }

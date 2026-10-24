@@ -58,16 +58,15 @@ export function useDataVersion(): number {
 export function useFilters(initial?: Partial<Filters>) {
   const [cropId, setCropId] = useState(initial?.cropId ?? 'maize');
   const [season, setSeason] = useState<Filters['season']>(initial?.season ?? 'A');
-  // Default to whatever year NISR has published — auto-updates when new data arrives
   const [year, setYear] = useState(initial?.year ?? getLatestYear());
 
-  // When the data store updates (e.g. new year published), re-check the latest year
+  // When crop or season changes, snap year to the latest available for that combo
   const dataVersion = useDataVersion();
   useEffect(() => {
-    if (initial?.year === undefined) {
-      setYear(getLatestYear());
-    }
-  }, [dataVersion, initial?.year]);
+    if (initial?.year !== undefined) return;
+    const latest = getLatestYear(cropId, season);
+    setYear(latest);
+  }, [cropId, season, dataVersion, initial?.year]);
 
   const filters = useMemo(() => ({ cropId, season, year }), [cropId, season, year]);
 

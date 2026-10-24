@@ -1,18 +1,14 @@
 // ---------------------------------------------------------------------------
 // API Configuration for NISR PXWeb, data.gov.rw, and Mistral AI
 //
-// In development: API calls go through the Vite dev server proxy (/api/...)
-// In production (Render/static): calls go directly to the real URLs.
+// All API calls go through the /api/* proxy:
+// - In development: Vite dev server proxy (vite.config.ts)
+// - In production: Express server proxy (server.js)
+// The browser NEVER calls external APIs directly — always via same-origin proxy.
 // ---------------------------------------------------------------------------
 
-const isDev = import.meta.env.DEV;
-
-// PXWeb API base
-// Dev: proxied through Vite to avoid CORS
-// Prod: direct call (NISR PXWeb is publicly accessible)
-export const PXWEB_BASE = isDev
-  ? '/api/nisr/api/v1/en'
-  : 'https://pxweb.statistics.gov.rw/api/v1/en';
+// PXWeb — always via proxy path (never direct to avoid CORS)
+export const PXWEB_BASE = '/api/nisr/api/v1/en';
 
 // PXWeb table paths
 const CROP_TABLE_DIR = [
@@ -43,13 +39,14 @@ export const PXWEB_TABLES = {
 } as const;
 
 export const PXWEB_ADDITIONAL_TABLES = {
-  landUse: ['NISR Statistical Databases', 'Agriculture', 'Agricultural land use', 'land.px'],
-  practices: ['NISR Statistical Databases', 'Agriculture', 'Agricultural practices', 'pratice.px'],
-  cashCrop: ['NISR Statistical Databases', 'Agriculture', 'Cash Crops', 'cash_crop.px'],
-  crops: ['NISR Statistical Databases', 'Agriculture', 'Cash Crops', 'crops.px'],
-  cashCropArea: [...CROP_TABLE_DIR, '_cashcrop.px'],
-  largeScaleYield: [...CROP_TABLE_DIR, 'Lager.px'],
-  scoreArea: [...CROP_TABLE_DIR, 'scro_area.px'],
+  landUse:       ['NISR Statistical Databases', 'Agriculture', 'Agricultural land use', 'land.px'],
+  practices:     ['NISR Statistical Databases', 'Agriculture', 'Agricultural practices', 'pratice.px'],
+  cashCrop:      ['NISR Statistical Databases', 'Agriculture', 'Cash Crops', 'cash_crop.px'],
+  crops:         ['NISR Statistical Databases', 'Agriculture', 'Cash Crops', 'crops.px'],
+  cashCropArea:  [...CROP_TABLE_DIR, '_cashcrop.px'],
+  largeScale:    [...CROP_TABLE_DIR, 'Lager.px'],
+  scoreArea:     [...CROP_TABLE_DIR, 'scro_area.px'],
+  harvestedArea: [...CROP_TABLE_DIR, 'havest.px'],
 } as const;
 
 export const PXWEB_DATA_YEAR = 2023;
@@ -60,13 +57,10 @@ export function buildPxWebUrl(pathSegments: readonly string[]): string {
 }
 
 // ---------------------------------------------------------------------------
-// data.gov.rw API
+// data.gov.rw — via proxy
 // ---------------------------------------------------------------------------
 
-export const DATAGOV_BASE = isDev
-  ? '/api/datagov/api/v1'
-  : 'https://api.data.gov.rw/api/v1';
-
+export const DATAGOV_BASE = '/api/datagov/api/v1';
 export const DATAGOV_API_KEY = import.meta.env.VITE_DATAGOV_API_KEY ?? '';
 
 export const DATAGOV_DATASETS = [
@@ -77,13 +71,10 @@ export const DATAGOV_DATASETS = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Mistral AI API
+// Mistral AI — via proxy
 // ---------------------------------------------------------------------------
 
-// In production call Mistral directly (no proxy needed — it supports CORS)
-export const MISTRAL_API_URL = isDev
-  ? '/api/mistral/v1/chat/completions'
-  : 'https://api.mistral.ai/v1/chat/completions';
+export const MISTRAL_API_URL = '/api/mistral/v1/chat/completions';
 
 // ---------------------------------------------------------------------------
 // PXWeb ↔ App mappings
