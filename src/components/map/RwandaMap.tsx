@@ -137,21 +137,21 @@ export default function RwandaMap({
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-md border border-gray-200 p-3 z-[1000]">
-        <p className="text-xs font-semibold text-gray-700 mb-2">{legendLabel}</p>
+      <div className="absolute bottom-4 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-3 z-[1000]">
+        <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">{legendLabel}</p>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">{formatNumber(legendMin)}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{formatNumber(legendMin)}</span>
           <div
             className="h-3 w-32 rounded"
             style={{
               background: `linear-gradient(to right, ${colorFn(0)}, ${colorFn(0.5)}, ${colorFn(1)})`,
             }}
           />
-          <span className="text-xs text-gray-500">{formatNumber(legendMax)}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{formatNumber(legendMax)}</span>
         </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="text-xs text-gray-400">Low</span>
-          <span className="text-xs text-gray-400">High</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">Low</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">High</span>
         </div>
       </div>
     </div>

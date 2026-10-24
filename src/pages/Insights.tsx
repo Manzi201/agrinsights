@@ -159,7 +159,7 @@ export default function Insights() {
         return { name: d?.name ?? distId, production: Math.round(prod) };
       });
 
-    return { postHarvestRisk, irrigationOpportunity: irrigationOpportunity.slice(0, 5), intensificationTargets, topExport };
+    return { postHarvestRisk, irrigationOpportunity: irrigationOpportunity.slice(0, 5), intensificationTargets, topExport, hasPracticeData: pd.length > 0, hasLargeScaleData: lsd.length > 0 };
   }, [dataVersion]);
 
   return (
@@ -279,7 +279,7 @@ export default function Insights() {
             </div>
             {track1Alerts.irrigationOpportunity.length === 0 ? (
               <p className="text-xs text-blue-600 dark:text-blue-400">
-                {getPracticeData().length === 0 ? 'Data loading...' : 'No irrigation gaps detected.'}
+                {track1Alerts.hasPracticeData ? 'No irrigation gaps detected.' : 'Data loading...'}
               </p>
             ) : (
               <div>
@@ -301,7 +301,7 @@ export default function Insights() {
             </div>
             {track1Alerts.intensificationTargets.length === 0 ? (
               <p className="text-xs text-purple-600 dark:text-purple-400">
-                {getLargeScaleData().length === 0 ? 'Data loading...' : 'No intensification gaps detected.'}
+                {track1Alerts.hasLargeScaleData ? 'No intensification gaps detected.' : 'Data loading...'}
               </p>
             ) : (
               <div>
