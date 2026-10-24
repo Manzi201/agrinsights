@@ -27,7 +27,7 @@ interface SoilRow { name: string; province: string; practice: string; coverageHa
 interface CropSummaryRow { name: string; color: string; harvestRatio: number; harvestedHa: number; cultivatedHa: number; }
 interface ScaleCompRow { cropName: string; color: string; lsYield: number; ssYield: number; }
 interface CashTrendRow { year: number; Coffee: number; Tea: number; }
-interface CropGrowthRow { name: string; color: string; yield2019: number; yield2023: number; growthPct: number; }
+interface CropGrowthRow { name: string; color: string; yield2019: number; yield2023: number; growthPct: number; earliestYear?: number; latestYear?: number; }
 interface ExportDistrictRow { name: string; province: string; production: number; }
 
 interface SupplyGapRow {
@@ -177,33 +177,59 @@ function computePostHarvestData(): CropSummaryRow[] {
 
 function computeProductivityData(): CropGrowthRow[] {
   const data = getAllData();
-  const yieldByCrop2019 = new Map<string, number[]>();
-  const yieldByCrop2023 = new Map<string, number[]>();
+
+  // Use the two most extreme years available in the store for Season A
+  const seasonAYears = [...new Set(data.filter((dp) => dp.season === 'A').map((dp) => dp.year))].sort();
+  if (seasonAYears.length === 0) return [];
+
+  const earliestYear = seasonAYears[0];
+  const latestYear   = seasonAYears[seasonAYears.length - 1];
+
+  // If only one year, show absolute yields (no comparison possible)
+  if (earliestYear === latestYear) {
+    const yieldByLatest = new Map<string, number[]>();
+    for (const dp of data.filter((dp) => dp.season === 'A' && dp.year === latestYear)) {
+      if (!yieldByLatest.has(dp.cropId)) yieldByLatest.set(dp.cropId, []);
+      yieldByLatest.get(dp.cropId)!.push(dp.yieldPerHa);
+    }
+    const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+    return crops
+      .filter((c) => yieldByLatest.has(c.id))
+      .map((c) => {
+        const y = avg(yieldByLatest.get(c.id)!);
+        return { name: c.name, color: c.color, yield2019: y, yield2023: y, growthPct: 0,
+          earliestYear, latestYear };
+      })
+      .sort((a, b) => b.yield2023 - a.yield2023);
+  }
+
+  const yieldByEarliest = new Map<string, number[]>();
+  const yieldByLatest   = new Map<string, number[]>();
 
   for (const dp of data.filter((dp) => dp.season === 'A')) {
-    if (dp.year === 2019) {
-      if (!yieldByCrop2019.has(dp.cropId)) yieldByCrop2019.set(dp.cropId, []);
-      yieldByCrop2019.get(dp.cropId)!.push(dp.yieldPerHa);
+    if (dp.year === earliestYear) {
+      if (!yieldByEarliest.has(dp.cropId)) yieldByEarliest.set(dp.cropId, []);
+      yieldByEarliest.get(dp.cropId)!.push(dp.yieldPerHa);
     }
-    if (dp.year === 2023) {
-      if (!yieldByCrop2023.has(dp.cropId)) yieldByCrop2023.set(dp.cropId, []);
-      yieldByCrop2023.get(dp.cropId)!.push(dp.yieldPerHa);
+    if (dp.year === latestYear) {
+      if (!yieldByLatest.has(dp.cropId)) yieldByLatest.set(dp.cropId, []);
+      yieldByLatest.get(dp.cropId)!.push(dp.yieldPerHa);
     }
   }
 
   const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
 
   return crops
-    .filter((c) => yieldByCrop2019.has(c.id) && yieldByCrop2023.has(c.id))
+    .filter((c) => yieldByEarliest.has(c.id) && yieldByLatest.has(c.id))
     .map((c) => {
-      const y19 = avg(yieldByCrop2019.get(c.id)!);
-      const y23 = avg(yieldByCrop2023.get(c.id)!);
+      const yE = avg(yieldByEarliest.get(c.id)!);
+      const yL = avg(yieldByLatest.get(c.id)!);
       return {
-        name: c.name,
-        color: c.color,
-        yield2019: Math.round(y19 * 100) / 100,
-        yield2023: Math.round(y23 * 100) / 100,
-        growthPct: Math.round(((y23 - y19) / y19) * 1000) / 10,
+        name: c.name, color: c.color,
+        yield2019: Math.round(yE * 100) / 100,
+        yield2023: Math.round(yL * 100) / 100,
+        growthPct: Math.round(((yL - yE) / yE) * 1000) / 10,
+        earliestYear, latestYear,
       };
     })
     .sort((a, b) => b.growthPct - a.growthPct);
@@ -574,64 +600,83 @@ function PostHarvestTab({ cropSummary }: { cropSummary: CropSummaryRow[] }) {
 
 function ProductivityTab({ cropGrowth, scaleComparison }: { cropGrowth: CropGrowthRow[]; scaleComparison: ScaleCompRow[] }) {
   const cs = useChartStyle();
+
+  // Derive year labels from data — never hardcode
+  const earliestYear = cropGrowth[0]?.earliestYear;
+  const latestYear   = cropGrowth[0]?.latestYear;
+  const earlyKey = earliestYear ? String(earliestYear) : 'Earlier';
+  const lateKey  = latestYear  ? String(latestYear)  : 'Latest';
+  const singleYear = earliestYear === latestYear;
+
   const chartData = cropGrowth.map((c) => ({
     name: c.name,
-    '2019': c.yield2019,
-    '2023': c.yield2023,
+    [earlyKey]: c.yield2019,
+    [lateKey]:  c.yield2023,
   }));
+
   const scaleChartData = scaleComparison.map((c) => ({
     name: c.cropName,
     'Large-Scale (kg/ha)': c.lsYield,
     'Small-Scale (kg/ha)': c.ssYield,
   }));
 
+  const trendLabel = singleYear
+    ? `Season A, ${latestYear} — yield per crop (t/ha)`
+    : `Yield per crop (Season A, ${earliestYear} → ${latestYear})`;
+
   return (
     <div className="space-y-6">
-      <SolutionArea
-        icon={<TrendingUp className="w-5 h-5 text-white" />}
-        color="bg-purple-600"
-        title="Agricultural Productivity & Value Addition"
-        challenge="While cultivated area has grown steadily, yield per hectare for several crops has improved slowly or stagnated, indicating that area expansion alone is not sufficient — intensification and processing are needed."
-        solution="Agrinsights measures yield per hectare trends by crop and district, enabling planners to identify which crops respond best to improved inputs and where processing facilities would add the most value."
-        dataInsight={
-          <div>
-            <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">Yield growth per crop (Season A, 2019 → 2023):</p>
-            <div className="space-y-1.5">
-              {cropGrowth.map((c) => (
-                <div key={c.name} className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-200 w-24 flex-shrink-0">{c.name}</span>
-                  <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${c.growthPct >= 0 ? 'bg-green-500' : 'bg-red-400'}`}
-                      style={{ width: `${Math.min(100, Math.abs(c.growthPct))}%` }}
-                    />
+      {cropGrowth.length === 0 ? (
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-10 text-center text-gray-500 dark:text-gray-400 text-sm">
+          Productivity data loading — waiting for NISR API response.
+        </div>
+      ) : (
+        <SolutionArea
+          icon={<TrendingUp className="w-5 h-5 text-white" />}
+          color="bg-purple-600"
+          title="Agricultural Productivity & Value Addition"
+          challenge="Yield per hectare for several crops has stagnated, indicating that area expansion alone is not sufficient — intensification and processing are needed."
+          solution="Agrinsights measures yield per hectare trends by crop and district, enabling planners to identify which crops respond best to improved inputs and where processing facilities would add the most value."
+          dataInsight={
+            <div>
+              <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">{trendLabel}:</p>
+              <div className="space-y-1.5">
+                {cropGrowth.map((c) => (
+                  <div key={c.name} className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-200 w-24 flex-shrink-0">{c.name}</span>
+                    <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${c.growthPct >= 0 ? 'bg-green-500' : 'bg-red-400'}`}
+                        style={{ width: `${Math.min(100, Math.max(1, Math.abs(c.growthPct) || 50))}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs font-semibold w-16 text-right flex-shrink-0 ${c.growthPct > 0 ? 'text-green-600 dark:text-green-400' : c.growthPct < 0 ? 'text-red-500 dark:text-red-400' : 'text-gray-500'}`}>
+                      {singleYear ? `${c.yield2023} t/ha` : `${c.growthPct > 0 ? '+' : ''}${c.growthPct}%`}
+                    </span>
                   </div>
-                  <span className={`text-xs font-semibold w-14 text-right flex-shrink-0 ${c.growthPct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-                    {c.growthPct > 0 ? '+' : ''}{c.growthPct}%
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        }
-        recommendations={[
-          'Invest in value-chain development for crops showing high yield growth (processing, packaging).',
-          'Introduce improved seed varieties and fertiliser programs in stagnant-yield crops.',
-          'Use Insights page to detect which districts drive national yield improvements for replication.',
-        ]}
-        chart={
-          <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 40, left: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={cs.grid} />
-            <XAxis dataKey="name" tick={{ fontSize: 10, fill: cs.axis }} stroke={cs.axis} angle={-25} textAnchor="end" interval={0} />
-            <YAxis tick={{ fontSize: 11, fill: cs.axis }} stroke={cs.axis} tickFormatter={(v) => `${v} t/ha`} />
-            <Tooltip contentStyle={cs.tt} formatter={(v) => [(v as number).toFixed(2) + ' t/ha', '']} />
-            <Legend wrapperStyle={{ fontSize: 12, color: cs.isDark ? '#9ca3af' : undefined }} />
-            <Bar dataKey="2019" fill="#a855f7" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="2023" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        }
-      />
+          }
+          recommendations={[
+            'Invest in value-chain development for crops showing high yield growth.',
+            'Introduce improved seed varieties and fertiliser programs for stagnant-yield crops.',
+            'Use Insights page to detect which districts drive national yield improvements.',
+          ]}
+          chart={
+            <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 40, left: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={cs.grid} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: cs.axis }} stroke={cs.axis} angle={-25} textAnchor="end" interval={0} />
+              <YAxis tick={{ fontSize: 11, fill: cs.axis }} stroke={cs.axis} tickFormatter={(v) => `${v} t/ha`} />
+              <Tooltip contentStyle={cs.tt} formatter={(v) => [(v as number).toFixed(2) + ' t/ha', '']} />
+              <Legend wrapperStyle={{ fontSize: 12, color: cs.isDark ? '#9ca3af' : undefined }} />
+              {!singleYear && <Bar dataKey={earlyKey} fill="#a855f7" radius={[4, 4, 0, 0]} />}
+              <Bar dataKey={lateKey} fill="#7c3aed" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          }
+        />
+      )}
 
       {/* Large-scale vs small-scale yield comparison */}
       {scaleComparison.length > 0 ? (
@@ -940,7 +985,8 @@ function PredictionSimulator() {
 
 function computeSupplyGapData(cropId: string): SupplyGapRow[] {
   const data = getAllData();
-  const filtered = data.filter((dp) => dp.cropId === cropId && dp.year === 2023);
+    const latestYear = getAllData().filter((p) => p.season === 'A').reduce((m, p) => Math.max(m, p.year), 2023);
+  const filtered = data.filter((dp) => dp.cropId === cropId && dp.year === latestYear);
   const prodByDistrict = new Map<string, number>();
   for (const dp of filtered) {
     prodByDistrict.set(dp.districtId, (prodByDistrict.get(dp.districtId) ?? 0) + dp.production);
@@ -1059,12 +1105,19 @@ function computeOpportunityData(): OpportunityCard[] {
   const data = getAllData();
   const cards: OpportunityCard[] = [];
 
-  // Season A 2023 data
-  const a2023 = data.filter((dp) => dp.season === 'A' && dp.year === 2023);
+  // Use the latest available Season A year dynamically
+  const seasonAYears = data.filter((dp) => dp.season === 'A').map((dp) => dp.year);
+  const latestYear  = seasonAYears.length > 0 ? Math.max(...seasonAYears) : 0;
+  const prevYear    = seasonAYears.length > 0 ? Math.max(...seasonAYears.filter((y) => y < latestYear), latestYear - 1) : 0;
+
+  if (latestYear === 0) return [];
+
+  // Season A latest year data
+  const aLatest = data.filter((dp) => dp.season === 'A' && dp.year === latestYear);
 
   // National avg yield per crop
   const nationalYield = new Map<string, number[]>();
-  for (const dp of a2023) {
+  for (const dp of aLatest) {
     if (!nationalYield.has(dp.cropId)) nationalYield.set(dp.cropId, []);
     nationalYield.get(dp.cropId)!.push(dp.yieldPerHa);
   }
@@ -1073,24 +1126,24 @@ function computeOpportunityData(): OpportunityCard[] {
     avgYield.set(cropId, vals.reduce((a, b) => a + b, 0) / vals.length);
   }
 
-  // National total production per crop 2022 vs 2023 season A
-  const a2022 = data.filter((dp) => dp.season === 'A' && dp.year === 2022);
-  const prod2022 = new Map<string, number>();
-  const prod2023 = new Map<string, number>();
-  for (const dp of a2022) prod2022.set(dp.cropId, (prod2022.get(dp.cropId) ?? 0) + dp.production);
-  for (const dp of a2023) prod2023.set(dp.cropId, (prod2023.get(dp.cropId) ?? 0) + dp.production);
+  // National total production — previous year vs latest year (Season A)
+  const aPrev = data.filter((dp) => dp.season === 'A' && dp.year === prevYear);
+  const prodPrev   = new Map<string, number>();
+  const prodLatest = new Map<string, number>();
+  for (const dp of aPrev)   prodPrev.set(dp.cropId,   (prodPrev.get(dp.cropId)   ?? 0) + dp.production);
+  for (const dp of aLatest) prodLatest.set(dp.cropId, (prodLatest.get(dp.cropId) ?? 0) + dp.production);
 
-  // Risk alert crops
+  // Risk alert crops (>5% production drop)
   const riskCrops = new Set<string>();
   for (const c of crops) {
-    const p22 = prod2022.get(c.id) ?? 0;
-    const p23 = prod2023.get(c.id) ?? 0;
-    if (p22 > 0 && (p22 - p23) / p22 > 0.05) riskCrops.add(c.id);
+    const pP = prodPrev.get(c.id)   ?? 0;
+    const pL = prodLatest.get(c.id) ?? 0;
+    if (pP > 0 && (pP - pL) / pP > 0.05) riskCrops.add(c.id);
   }
 
   // Area distribution for intensification
   const areaArr = new Map<string, number[]>();
-  for (const dp of a2023) {
+  for (const dp of aLatest) {
     if (!areaArr.has(dp.cropId)) areaArr.set(dp.cropId, []);
     areaArr.get(dp.cropId)!.push(dp.area);
   }
@@ -1100,9 +1153,9 @@ function computeOpportunityData(): OpportunityCard[] {
     medianArea.set(cropId, sorted[Math.floor(sorted.length / 2)]);
   }
 
-  // Per-district, per-crop data for 2023 A
+  // Per-district, per-crop data for latest year Season A
   const districtCropMap = new Map<string, Map<string, { yieldPerHa: number; area: number }>>();
-  for (const dp of a2023) {
+  for (const dp of aLatest) {
     if (!districtCropMap.has(dp.districtId)) districtCropMap.set(dp.districtId, new Map());
     districtCropMap.get(dp.districtId)!.set(dp.cropId, { yieldPerHa: dp.yieldPerHa, area: dp.area });
   }
@@ -1111,16 +1164,16 @@ function computeOpportunityData(): OpportunityCard[] {
   for (const cropId of riskCrops) {
     const crop = crops.find((c) => c.id === cropId);
     if (!crop) continue;
-    const p22 = prod2022.get(cropId) ?? 0;
-    const p23 = prod2023.get(cropId) ?? 0;
-    const drop = p22 > 0 ? ((p22 - p23) / p22 * 100).toFixed(1) : '0';
+    const pP2 = prodPrev.get(cropId)   ?? 0;
+    const pL2 = prodLatest.get(cropId) ?? 0;
+    const drop = pP2 > 0 ? ((pP2 - pL2) / pP2 * 100).toFixed(1) : '0';
     cards.push({
       districtName: 'All Districts',
       cropName: crop.name,
       cropColor: crop.color,
       tag: 'Risk Alert',
       tagColor: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-      detail: `National production dropped ${drop}% (2022→2023)`,
+      detail: `National production dropped ${drop}% (${prevYear}→${latestYear})`,
     });
   }
 
@@ -1163,34 +1216,37 @@ function computeOpportunityData(): OpportunityCard[] {
   }
 
   // Investment Opportunity: consecutive growth (season A, 2021-2022-2023)
-  const yearlyProd = new Map<string, Map<string, number>>(); // districtId -> cropId -> year -> prod
-  const years = [2021, 2022, 2023];
-  for (const year of years) {
-    const aYear = data.filter((dp) => dp.season === 'A' && dp.year === year);
-    for (const dp of aYear) {
+  // Investment Opportunity: look for consecutive growth across all available Season A years
+  const consYears = [...new Set(data.filter((dp) => dp.season === 'A').map((dp) => dp.year))].sort();
+  const yearlyProd = new Map<string, Map<string, number>>();
+  for (const yr of consYears) {
+    for (const dp of data.filter((dp) => dp.season === 'A' && dp.year === yr)) {
       const key = `${dp.districtId}::${dp.cropId}`;
       if (!yearlyProd.has(key)) yearlyProd.set(key, new Map());
-      yearlyProd.get(key)!.set(String(year), dp.production);
+      yearlyProd.get(key)!.set(String(yr), dp.production);
     }
   }
 
-  for (const district of districts) {
-    for (const crop of crops) {
-      const key = `${district.id}::${crop.id}`;
-      const yp = yearlyProd.get(key);
-      if (!yp) continue;
-      const p21 = yp.get('2021') ?? 0;
-      const p22 = yp.get('2022') ?? 0;
-      const p23 = yp.get('2023') ?? 0;
-      if (p21 > 0 && p22 > p21 && p23 > p22) {
-        cards.push({
-          districtName: district.name,
-          cropName: crop.name,
-          cropColor: crop.color,
-          tag: 'Investment Opportunity',
-          tagColor: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-          detail: `3 consecutive years of growth (${formatNumber(p21)}→${formatNumber(p22)}→${formatNumber(p23)} t)`,
-        });
+  if (consYears.length >= 3) {
+    const [yA, yB, yC] = consYears.slice(-3);
+    for (const district of districts) {
+      for (const crop of crops) {
+        const key = `${district.id}::${crop.id}`;
+        const yp = yearlyProd.get(key);
+        if (!yp) continue;
+        const pA = yp.get(String(yA)) ?? 0;
+        const pB = yp.get(String(yB)) ?? 0;
+        const pC = yp.get(String(yC)) ?? 0;
+        if (pA > 0 && pB > pA && pC > pB) {
+          cards.push({
+            districtName: district.name,
+            cropName: crop.name,
+            cropColor: crop.color,
+            tag: 'Investment Opportunity',
+            tagColor: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+            detail: `3 consecutive years of growth (${formatNumber(pA)}→${formatNumber(pB)}→${formatNumber(pC)} t)`,
+          });
+        }
       }
     }
   }
@@ -1277,7 +1333,8 @@ function OpportunityFinder() {
 
 function computeRoutingData(cropId: string): { hubs: RoutingHub[]; needsSupply: RoutingRow[] } {
   const data = getAllData();
-  const filtered = data.filter((dp) => dp.cropId === cropId && dp.season === 'A' && dp.year === 2023);
+    const latestYearR = data.filter((p) => p.season === 'A').reduce((m, p) => Math.max(m, p.year), 2023);
+  const filtered = data.filter((dp) => dp.cropId === cropId && dp.season === 'A' && dp.year === latestYearR);
   const prodByDistrict = new Map<string, number>();
   for (const dp of filtered) {
     prodByDistrict.set(dp.districtId, (prodByDistrict.get(dp.districtId) ?? 0) + dp.production);
@@ -1573,6 +1630,68 @@ function TabBar({ activeTab, onChange }: TabBarProps) {
 // ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
+// Dynamic Data Foundation card
+// ---------------------------------------------------------------------------
+
+function DataFoundationCard() {
+  useDataVersion(); // re-render when store updates
+  const data = getAllData();
+
+  const districtCount = new Set(data.map((dp) => dp.districtId)).size;
+  const cropCount     = new Set(data.map((dp) => dp.cropId)).size;
+  const seasonSet     = new Set(data.map((dp) => dp.season));
+  const yearSet       = [...new Set(data.map((dp) => dp.year))].sort();
+
+  const seasonsText = seasonSet.size > 0
+    ? ['A', 'B', 'C'].filter((s) => seasonSet.has(s as 'A' | 'B' | 'C')).map((s) => `Season ${s}`).join(', ')
+    : 'Seasons A, B';
+
+  const yearsText = yearSet.length > 0
+    ? yearSet.length === 1
+      ? String(yearSet[0])
+      : `${yearSet[0]}–${yearSet[yearSet.length - 1]}`
+    : 'Loading…';
+
+  const lastFetched = data.length > 0 ? new Date().getFullYear() : null;
+
+  const items = [
+    districtCount > 0 ? `${districtCount} districts across all 5 provinces` : 'All 30 districts across all 5 provinces',
+    cropCount     > 0 ? `${cropCount} major food crops with yield, area and production data` : '8 major food crops with yield, area and production data',
+    data.length   > 0 ? `${seasonsText} — years: ${yearsText}` : 'Seasons A, B and C',
+    'Yield per hectare enabling productivity and intensification analysis',
+    'Cross-district comparisons for targeting agricultural interventions',
+  ];
+
+  return (
+    <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-200 dark:border-primary-800 p-5 mt-6">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
+          <BarChart2 className="w-5 h-5 text-white" />
+        </div>
+        <h3 className="text-base font-bold text-primary-900 dark:text-primary-100">Data Foundation</h3>
+      </div>
+      <p className="text-sm text-primary-800 dark:text-primary-200 leading-relaxed mb-4">
+        All solutions are grounded in data from the{' '}
+        <strong>National Institute of Statistics of Rwanda (NISR)</strong> agricultural surveys, covering:
+      </p>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2 text-sm text-primary-800 dark:text-primary-200">
+            <CheckCircle2 className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" />
+            {item}
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-primary-600 dark:text-primary-400 mt-4 border-t border-primary-200 dark:border-primary-700 pt-3">
+        Data source: NISR PXWeb API — pxweb.statistics.gov.rw
+        {lastFetched ? ` · Last synced ${lastFetched}` : ''}
+        {data.length > 0 ? ` · ${data.length.toLocaleString()} data points loaded` : ''}
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 
 export default function Solutions() {
   const dataVersion = useDataVersion();
@@ -1614,35 +1733,8 @@ export default function Solutions() {
         </div>
       </div>
 
-      {/* Data foundation note */}
-      <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-200 dark:border-primary-800 p-5 mt-6">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <BarChart2 className="w-5 h-5 text-white" />
-          </div>
-          <h3 className="text-base font-bold text-primary-900 dark:text-primary-100">Data Foundation</h3>
-        </div>
-        <p className="text-sm text-primary-800 dark:text-primary-200 leading-relaxed mb-4">
-          All solutions above are grounded in data from the <strong>National Institute of Statistics of Rwanda (NISR)</strong> agricultural surveys, covering:
-        </p>
-        <ul className="space-y-2">
-          {[
-            '30 districts across all 5 provinces',
-            '8 major food crops with yield, area and production data',
-            'Seasons A, B and C (2018–2024)',
-            'Yield per hectare trends enabling productivity analysis',
-            'Cross-district comparisons for targeting interventions',
-          ].map((item) => (
-            <li key={item} className="flex gap-2 text-sm text-primary-800 dark:text-primary-200">
-              <CheckCircle2 className="w-4 h-4 text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" />
-              {item}
-            </li>
-          ))}
-        </ul>
-        <p className="text-xs text-primary-600 dark:text-primary-400 mt-4 border-t border-primary-200 dark:border-primary-700 pt-3">
-          Data source: NISR PXWeb API — pxweb.statistics.gov.rw · Updated 2024
-        </p>
-      </div>
+      {/* Data foundation note — fully dynamic from live store */}
+      <DataFoundationCard />
     </div>
   );
 }

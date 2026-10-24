@@ -1,0 +1,26 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "severity": "blocking",
+      "file": "src/pages/Solutions.tsx",
+      "description": "computeExportData() filters dp.year === 2023 (hardcoded), while the equivalent export computations in Insights.tsx and Reports.tsx both use Math.max(...adYears) for the latest year. When 2024 data is present, Solutions Export tab will show zero or stale results while the other two pages show current data. Replace with a dynamic latestYear computation identical to the other functions, and update the hardcoded '2023' label in the dataInsight paragraph."
+    },
+    {
+      "severity": "blocking",
+      "file": "src/pages/CashCrops.tsx",
+      "description": "Adding dataVersion to the useEffect dependency causes fetchCashCropData(), fetchFullYieldTable(), and fetchCashCropAreaData() to each fire three times on page load (once per bump() in nisr.ts). The fallback from the NISR store only succeeds on the third call, but the first two calls still send HTTP requests to the NISR API, tripling API load. Fix by splitting into two effects: a primary fetch on [] and a separate fallback-only effect on [dataVersion] that only runs when the primary fetch already returned empty data."
+    },
+    {
+      "severity": "suggestion",
+      "file": "src/pages/Reports.tsx",
+      "description": "Three pre-existing <h4> headings ('Production by Crop', 'Production by District', 'Year Comparison') use text-gray-700 with no dark:text-gray-200 variant. They sit immediately above new headings that do have dark: classes, making the inconsistency visible in dark mode. Fix all three while the file is open."
+    },
+    {
+      "severity": "suggestion",
+      "file": "src/pages/Solutions.tsx",
+      "description": "computeSoilData() deviates from plan: the plan specified a three-bar grouped BarChart (Erosion Control / Inorganic Fertilizer / Organic Fertilizer) but the implementation collapses all practices into a single coverageHa field and excludes Organic fertilizer from targetPractices entirely. The inorganic vs organic fertilizer adoption gap — a key fertility signal — is lost. Consider adding organic fertilizer back and splitting into separate fields for the chart."
+    }
+  ],
+  "reviewDoc": "e:\\Project\\Agrinsights app\\.agents\\tasks\\code-review.md"
+}

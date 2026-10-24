@@ -81,14 +81,30 @@ export const MISTRAL_API_URL = '/api/mistral/v1/chat/completions';
 // ---------------------------------------------------------------------------
 
 export const PXWEB_CROP_MAP: Record<string, string> = {
-  '0': 'maize',
-  '1': 'sorghum',
-  '2': 'rice',
-  '3': 'wheat',
-  '5': 'cassava',
-  '6': 'sweet-potato',
-  '7': 'irish-potato',
+  '0':  'maize',
+  '1':  'sorghum',
+  '2':  'rice',
+  '3':  'wheat',
+  '4':  'other-cereals',
+  '5':  'cassava',
+  '6':  'sweet-potato',
+  '7':  'irish-potato',
+  '8':  'yams-taro',
+  '9':  'bananas',
+  '10': 'cooking-banana',
+  '11': 'dessert-banana',
+  '12': 'banana-beer',
   '13': 'beans',
+  '14': 'bush-bean',
+  '15': 'climbing-bean',
+  '16': 'pea',
+  '17': 'groundnut',
+  '18': 'soybean',
+  '19': 'vegetables',
+  '20': 'fruits',
+  '21': 'fodder-crops',
+  '22': 'other-crops',
+  // '23' = Total developed land — skip (aggregate, not a crop)
 };
 
 export const PXWEB_DISTRICT_MAP: Record<string, string> = {

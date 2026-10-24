@@ -2,7 +2,7 @@
 
 export type Province = 'Kigali' | 'Eastern' | 'Northern' | 'Southern' | 'Western';
 export type Season = 'A' | 'B' | 'C';
-export type CropCategory = 'Cereals' | 'Legumes' | 'Roots & Tubers' | 'Other';
+export type CropCategory = 'Cereals' | 'Legumes' | 'Roots & Tubers' | 'Bananas' | 'Other';
 export type InsightType = 'positive' | 'warning' | 'critical' | 'info';
 
 export interface District {

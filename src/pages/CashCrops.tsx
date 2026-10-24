@@ -340,8 +340,7 @@ export default function CashCrops() {
                   </div>
                   <ul className="space-y-1.5 text-xs text-teal-900 dark:text-teal-200">
                     <li>• Latest: {teaStats ? `${formatNumber(teaStats.latestProduction)} t (${teaStats.latestYear})` : '—'}</li>
-                    <li>• Trend: <strong>growing strongly</strong> — +{teaStats?.totalGrowthPct}% since 2016</li>
-                    <li>• Every year shows consecutive growth (2016–2022)</li>
+                    <li>• Trend: <strong>{teaStats && teaStats.totalGrowthPct > 0 ? 'growing' : teaStats && teaStats.totalGrowthPct < 0 ? 'declining' : 'stable'}</strong> — {teaStats ? `${teaStats.totalGrowthPct > 0 ? '+' : ''}${teaStats.totalGrowthPct}%` : '—'} since {teaStats ? String(teaStats.latestYear - 6) : '—'}</li>
                     <li>• Action: expand processing capacity and pursue premium export markets</li>
                   </ul>
                 </div>
@@ -461,19 +460,48 @@ export default function CashCrops() {
               </div>
 
               {/* Summary stat cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { label: 'Coffee total area (2020)', value: '40', unit: "'000 ha", color: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-300' },
-                  { label: 'Coffee utilization rate', value: '~83%', unit: '(2018)', color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800', text: 'text-orange-700 dark:text-orange-300' },
-                  { label: 'Tea total area (2020)', value: '24', unit: "'000 ha", color: 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800', text: 'text-teal-700 dark:text-teal-300' },
-                  { label: 'Tea utilization rate', value: '88%', unit: '(2020)', color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800', text: 'text-green-700 dark:text-green-300' },
-                ].map((s) => (
-                  <div key={s.label} className={`rounded-xl border p-4 ${s.color}`}>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{s.label}</p>
-                    <p className={`text-xl font-bold ${s.text}`}>{s.value} <span className="text-sm font-normal">{s.unit}</span></p>
+              {/* Dynamic stat cards from NISR area data */}
+              {(() => {
+                const coffeeTotal   = coffeeAreaChartData.filter((r) => r['Total area'] !== null);
+                const teaTotal      = teaAreaChartData.filter((r) => r['Total area'] !== null);
+                const coffeeLast    = coffeeTotal[coffeeTotal.length - 1];
+                const teaLast       = teaTotal[teaTotal.length - 1];
+                const coffeeActive  = coffeeAreaChartData.filter((r) => r['Under production'] !== null);
+                const teaActive     = teaAreaChartData.filter((r) => r['Under production'] !== null);
+                const coffeeUtil    = coffeeActive[coffeeActive.length - 1]?.['Utilization %'];
+                const teaUtil       = teaActive[teaActive.length - 1]?.['Utilization %'];
+
+                if (!coffeeLast && !teaLast) return null;
+
+                return (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {coffeeLast?.['Total area'] !== undefined && (
+                      <div className="rounded-xl border p-4 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Coffee total area ({coffeeLast.year})</p>
+                        <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{coffeeLast['Total area']} <span className="text-sm font-normal">'000 ha</span></p>
+                      </div>
+                    )}
+                    {coffeeUtil !== null && coffeeUtil !== undefined && (
+                      <div className="rounded-xl border p-4 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Coffee utilization ({coffeeActive[coffeeActive.length - 1]?.year})</p>
+                        <p className="text-xl font-bold text-orange-700 dark:text-orange-300">{coffeeUtil}%</p>
+                      </div>
+                    )}
+                    {teaLast?.['Total area'] !== undefined && (
+                      <div className="rounded-xl border p-4 bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Tea total area ({teaLast.year})</p>
+                        <p className="text-xl font-bold text-teal-700 dark:text-teal-300">{teaLast['Total area']} <span className="text-sm font-normal">'000 ha</span></p>
+                      </div>
+                    )}
+                    {teaUtil !== null && teaUtil !== undefined && (
+                      <div className="rounded-xl border p-4 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Tea utilization ({teaActive[teaActive.length - 1]?.year})</p>
+                        <p className="text-xl font-bold text-green-700 dark:text-green-300">{teaUtil}%</p>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
 
               {/* Coffee area chart */}
               <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">

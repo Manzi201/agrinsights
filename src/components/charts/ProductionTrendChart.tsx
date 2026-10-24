@@ -13,7 +13,7 @@ export default function ProductionTrendChart({ data, cropName, cropColor }: Prop
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
       <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4">
-        {cropName} Production Trend (2018–2024)
+        {cropName} Production Trend
       </h3>
       <div style={{ height: 280 }}>
         <ResponsiveContainer width="100%" height="100%">

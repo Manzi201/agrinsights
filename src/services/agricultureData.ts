@@ -51,18 +51,39 @@ export const districts: District[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Crops — names, categories, and display colors only
+// Crops — complete list matching NISR PXWeb crop codes 0-22
+// Names taken directly from NISR valueTexts; colors assigned by category.
 // ---------------------------------------------------------------------------
 
 export const crops: Crop[] = [
-  { id: 'maize',        name: 'Maize',        nameKinyarwanda: 'Ibigori',   category: 'Cereals',        yieldLow: 1,   yieldHigh: 4,  color: '#f59e0b' },
-  { id: 'beans',        name: 'Beans',        nameKinyarwanda: 'Ibishyimbo',category: 'Legumes',        yieldLow: 0.5, yieldHigh: 1.5,color: '#8b5cf6' },
-  { id: 'sorghum',      name: 'Sorghum',      nameKinyarwanda: 'Amasaka',   category: 'Cereals',        yieldLow: 0.8, yieldHigh: 2,  color: '#ef4444' },
-  { id: 'cassava',      name: 'Cassava',      nameKinyarwanda: 'Imyumbati',  category: 'Roots & Tubers', yieldLow: 5,   yieldHigh: 12, color: '#14b8a6' },
-  { id: 'irish-potato', name: 'Irish Potato', nameKinyarwanda: 'Ibirayi',   category: 'Roots & Tubers', yieldLow: 8,   yieldHigh: 18, color: '#6366f1' },
-  { id: 'sweet-potato', name: 'Sweet Potato', nameKinyarwanda: 'Ibijumba',  category: 'Roots & Tubers', yieldLow: 4,   yieldHigh: 10, color: '#f97316' },
-  { id: 'wheat',        name: 'Wheat',        nameKinyarwanda: 'Ingano',    category: 'Cereals',        yieldLow: 1.5, yieldHigh: 3,  color: '#eab308' },
-  { id: 'rice',         name: 'Rice',         nameKinyarwanda: 'Umuceri',   category: 'Cereals',        yieldLow: 3,   yieldHigh: 6,  color: '#06b6d4' },
+  // Cereals
+  { id: 'maize',          name: 'Maize',           nameKinyarwanda: 'Ibigori',    category: 'Cereals',        yieldLow: 1,   yieldHigh: 4,  color: '#f59e0b' },
+  { id: 'sorghum',        name: 'Sorghum',         nameKinyarwanda: 'Amasaka',    category: 'Cereals',        yieldLow: 0.8, yieldHigh: 2,  color: '#ef4444' },
+  { id: 'rice',           name: 'Paddy Rice',      nameKinyarwanda: 'Umuceri',    category: 'Cereals',        yieldLow: 3,   yieldHigh: 6,  color: '#06b6d4' },
+  { id: 'wheat',          name: 'Wheat',           nameKinyarwanda: 'Ingano',     category: 'Cereals',        yieldLow: 1.5, yieldHigh: 3,  color: '#eab308' },
+  { id: 'other-cereals',  name: 'Other Cereals',   nameKinyarwanda: 'Ibindi',     category: 'Cereals',        yieldLow: 0.5, yieldHigh: 2,  color: '#d97706' },
+  // Roots & Tubers
+  { id: 'cassava',        name: 'Cassava',         nameKinyarwanda: 'Imyumbati',  category: 'Roots & Tubers', yieldLow: 5,   yieldHigh: 12, color: '#14b8a6' },
+  { id: 'sweet-potato',   name: 'Sweet Potato',    nameKinyarwanda: 'Ibijumba',   category: 'Roots & Tubers', yieldLow: 4,   yieldHigh: 10, color: '#f97316' },
+  { id: 'irish-potato',   name: 'Irish Potato',    nameKinyarwanda: 'Ibirayi',    category: 'Roots & Tubers', yieldLow: 8,   yieldHigh: 18, color: '#6366f1' },
+  { id: 'yams-taro',      name: 'Yams & Taro',     nameKinyarwanda: 'Ibigega',    category: 'Roots & Tubers', yieldLow: 3,   yieldHigh: 8,  color: '#0891b2' },
+  // Bananas
+  { id: 'bananas',        name: 'Bananas',         nameKinyarwanda: 'Imbeke',     category: 'Bananas',        yieldLow: 8,   yieldHigh: 20, color: '#fbbf24' },
+  { id: 'cooking-banana', name: 'Cooking Banana',  nameKinyarwanda: 'Ibitoke',    category: 'Bananas',        yieldLow: 8,   yieldHigh: 18, color: '#f59e0b' },
+  { id: 'dessert-banana', name: 'Dessert Banana',  nameKinyarwanda: 'Amashaza',   category: 'Bananas',        yieldLow: 7,   yieldHigh: 16, color: '#fcd34d' },
+  { id: 'banana-beer',    name: 'Banana for Beer', nameKinyarwanda: 'Urwagwa',    category: 'Bananas',        yieldLow: 9,   yieldHigh: 20, color: '#d97706' },
+  // Legumes
+  { id: 'beans',          name: 'Beans',           nameKinyarwanda: 'Ibishyimbo', category: 'Legumes',        yieldLow: 0.5, yieldHigh: 1.5,color: '#8b5cf6' },
+  { id: 'bush-bean',      name: 'Bush Bean',       nameKinyarwanda: 'Ibishyimbo bito', category: 'Legumes',  yieldLow: 0.4, yieldHigh: 1.2,color: '#7c3aed' },
+  { id: 'climbing-bean',  name: 'Climbing Bean',   nameKinyarwanda: 'Ibishyimbo biganda', category: 'Legumes',yieldLow: 0.8, yieldHigh: 2,  color: '#6d28d9' },
+  { id: 'pea',            name: 'Pea',             nameKinyarwanda: 'Amashaza',   category: 'Legumes',        yieldLow: 0.5, yieldHigh: 1.5,color: '#a78bfa' },
+  { id: 'groundnut',      name: 'Groundnut',       nameKinyarwanda: 'Inyobwa',    category: 'Legumes',        yieldLow: 0.5, yieldHigh: 1.5,color: '#c084fc' },
+  { id: 'soybean',        name: 'Soybean',         nameKinyarwanda: 'Isoya',      category: 'Legumes',        yieldLow: 0.8, yieldHigh: 2,  color: '#e879f9' },
+  // Other
+  { id: 'vegetables',     name: 'Vegetables',      nameKinyarwanda: 'Imboga',     category: 'Other',          yieldLow: 5,   yieldHigh: 20, color: '#22c55e' },
+  { id: 'fruits',         name: 'Fruits',          nameKinyarwanda: 'Imbuto',     category: 'Other',          yieldLow: 5,   yieldHigh: 15, color: '#16a34a' },
+  { id: 'fodder-crops',   name: 'Fodder Crops',    nameKinyarwanda: 'Ibyatsi',    category: 'Other',          yieldLow: 2,   yieldHigh: 8,  color: '#15803d' },
+  { id: 'other-crops',    name: 'Other Crops',     nameKinyarwanda: 'Ibindi',     category: 'Other',          yieldLow: 1,   yieldHigh: 5,  color: '#64748b' },
 ];
 
 // Seasons: A+B from 2023 API, C from 2021/2022 API

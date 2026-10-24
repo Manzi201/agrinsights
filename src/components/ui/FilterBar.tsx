@@ -59,10 +59,7 @@ export default function FilterBar({ cropId, season, year, onCropChange, onSeason
 
         {/* Year — only shows years with real data in the store */}
         <div className="flex flex-col">
-          <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
-            Year
-            <span className="ml-1 text-primary-500 font-normal">({availableYears.length} available)</span>
-          </label>
+          <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Year</label>
           <select
             value={year}
             onChange={(e) => onYearChange(Number(e.target.value))}
