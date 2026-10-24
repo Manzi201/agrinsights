@@ -1,5 +1,5 @@
 import type { DataPoint, Insight, Season } from '../types/agriculture';
-import { getAllData, getDistrictById, getCropById, crops, districts, years, seasons } from '../services/agricultureData';
+import { getAllData, getDistrictById, getCropById, crops, districts, seasons } from '../services/agricultureData';
 
 /** Format a number with thousands separators. */
 export function formatNumber(n: number): string {
@@ -238,6 +238,5 @@ export function getSelectors() {
     crops: crops.map((c) => ({ id: c.id, name: c.name, nameKinyarwanda: c.nameKinyarwanda, color: c.color })),
     districts: districts.map((d) => ({ id: d.id, name: d.name, province: d.province })),
     seasons,
-    years,
   };
 }

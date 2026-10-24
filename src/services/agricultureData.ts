@@ -58,17 +58,19 @@ export const crops: Crop[] = [
   { id: 'maize',        name: 'Maize',        nameKinyarwanda: 'Ibigori',   category: 'Cereals',        yieldLow: 1,   yieldHigh: 4,  color: '#f59e0b' },
   { id: 'beans',        name: 'Beans',        nameKinyarwanda: 'Ibishyimbo',category: 'Legumes',        yieldLow: 0.5, yieldHigh: 1.5,color: '#8b5cf6' },
   { id: 'sorghum',      name: 'Sorghum',      nameKinyarwanda: 'Amasaka',   category: 'Cereals',        yieldLow: 0.8, yieldHigh: 2,  color: '#ef4444' },
-  { id: 'cassava',      name: 'Cassava',      nameKinyarwanda: 'Igikombe',  category: 'Roots & Tubers', yieldLow: 5,   yieldHigh: 12, color: '#14b8a6' },
+  { id: 'cassava',      name: 'Cassava',      nameKinyarwanda: 'Imyumbati',  category: 'Roots & Tubers', yieldLow: 5,   yieldHigh: 12, color: '#14b8a6' },
   { id: 'irish-potato', name: 'Irish Potato', nameKinyarwanda: 'Ibirayi',   category: 'Roots & Tubers', yieldLow: 8,   yieldHigh: 18, color: '#6366f1' },
   { id: 'sweet-potato', name: 'Sweet Potato', nameKinyarwanda: 'Ibijumba',  category: 'Roots & Tubers', yieldLow: 4,   yieldHigh: 10, color: '#f97316' },
-  { id: 'wheat',        name: 'Wheat',        nameKinyarwanda: 'Uburindi',  category: 'Cereals',        yieldLow: 1.5, yieldHigh: 3,  color: '#eab308' },
+  { id: 'wheat',        name: 'Wheat',        nameKinyarwanda: 'Ingano',    category: 'Cereals',        yieldLow: 1.5, yieldHigh: 3,  color: '#eab308' },
   { id: 'rice',         name: 'Rice',         nameKinyarwanda: 'Umuceri',   category: 'Cereals',        yieldLow: 3,   yieldHigh: 6,  color: '#06b6d4' },
 ];
 
-// Seasons: A+B from 2023 API, C from 2021/2022 API, all available in store
+// Seasons: A+B from 2023 API, C from 2021/2022 API
 export const seasons: Season[] = ['A', 'B', 'C'];
-// Full year range: GVA trend 2016-2023, Season C 2021-2022, Season A+B 2023
-export const years: number[] = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023];
+
+// Static fallback years — real available years are derived dynamically
+// from the live store via getAvailableYears() below
+export const years: number[] = [2023];
 
 // ---------------------------------------------------------------------------
 // Live data store — populated exclusively from NISR API calls in nisr.ts
@@ -80,6 +82,18 @@ let _dataStore: DataPoint[] = [];
 /** Returns the current live dataset from NISR APIs. Empty until loaded. */
 export function getAllData(): DataPoint[] {
   return _dataStore;
+}
+
+/** Returns the distinct years present in the live store, sorted ascending. */
+export function getAvailableYears(): number[] {
+  if (_dataStore.length === 0) return [2023];
+  return [...new Set(_dataStore.map((dp) => dp.year))].sort((a, b) => a - b);
+}
+
+/** Returns the most recent year in the store. */
+export function getLatestYear(): number {
+  const yrs = getAvailableYears();
+  return yrs[yrs.length - 1] ?? 2023;
 }
 
 /** True when at least one API fetch has populated the store. */
@@ -97,8 +111,7 @@ export function clearData(): void {
   _dataStore = [];
 }
 
-// Backward-compat: use getAllData() everywhere; this is kept only for imports that haven't been updated
-// NOTE: This is NOT a live reference — always call getAllData() for current data
+// Backward-compat alias
 export function getAgricultureData(): DataPoint[] { return _dataStore; }
 
 // ---------------------------------------------------------------------------

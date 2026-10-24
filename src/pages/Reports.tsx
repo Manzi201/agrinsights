@@ -1,6 +1,6 @@
 import { useRef, useMemo, useState } from 'react';
 import type { Season } from '../types/agriculture';
-import { crops, districts, years, seasons, getAllData, getDistrictById, getCropById } from '../services/agricultureData';
+import { crops, districts, getAvailableYears, seasons, getAllData, getDistrictById, getCropById } from '../services/agricultureData';
 import { formatNumber, percentChange } from '../utils/calculations';
 import { exportToCSV, exportReportToPDF, dataPointsToCSVRows } from '../utils/exportUtils';
 import { useDataVersion } from '../hooks/useAgricultureData';
@@ -119,7 +119,7 @@ export default function Reports() {
       `Districts: ${selectedDistricts.length === 0 ? 'All' : selectedDistricts.length}`,
       `Crops: ${selectedCrops.length === 0 ? 'All' : selectedCrops.length}`,
       `Seasons: ${selectedSeasons.length === 0 ? 'All' : selectedSeasons.join(', ')}`,
-      `Years: ${selectedYears.length === 0 ? 'All' : selectedYears.join(', ')}`,
+      `getAvailableYears(): ${selectedYears.length === 0 ? 'All' : selectedYears.join(', ')}`,
     ];
 
     const tableHeaders = ['District', 'Crop', 'Season', 'Year', 'Prod (t)', 'Area (ha)', 'Yield'];
@@ -216,13 +216,13 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* Years */}
+          {/* getAvailableYears() */}
           <div>
             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 block">
-              Years (empty = all)
+              getAvailableYears() (empty = all)
             </label>
             <div className="space-y-2">
-              {years.map((y) => (
+              {getAvailableYears().map((y) => (
                 <label key={y} className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="checkbox"
@@ -275,7 +275,7 @@ export default function Reports() {
           </p>
           <p>
             Seasons: {selectedSeasons.length === 0 ? 'All seasons' : selectedSeasons.join(', ')} |
-            Years: {selectedYears.length === 0 ? 'All years' : selectedYears.join(', ')}
+            getAvailableYears(): {selectedYears.length === 0 ? 'All getAvailableYears()' : selectedYears.join(', ')}
           </p>
         </div>
 

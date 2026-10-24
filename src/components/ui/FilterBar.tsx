@@ -1,5 +1,6 @@
 import type { Season } from '../../types/agriculture';
-import { crops, years } from '../../services/agricultureData';
+import { crops, getAvailableYears } from '../../services/agricultureData';
+import { useDataVersion } from '../../hooks/useAgricultureData';
 
 interface FilterBarProps {
   cropId: string;
@@ -11,6 +12,10 @@ interface FilterBarProps {
 }
 
 export default function FilterBar({ cropId, season, year, onCropChange, onSeasonChange, onYearChange }: FilterBarProps) {
+  // Re-compute available years whenever the data store updates
+  useDataVersion();
+  const availableYears = getAvailableYears();
+
   const selectCls = [
     'px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full',
     'border-gray-300 dark:border-gray-600',
@@ -52,11 +57,20 @@ export default function FilterBar({ cropId, season, year, onCropChange, onSeason
           </div>
         </div>
 
-        {/* Year */}
+        {/* Year — only shows years with real data in the store */}
         <div className="flex flex-col">
-          <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Year</label>
-          <select value={year} onChange={(e) => onYearChange(Number(e.target.value))} className={selectCls + ' min-w-[90px]'}>
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+            Year
+            <span className="ml-1 text-primary-500 font-normal">({availableYears.length} available)</span>
+          </label>
+          <select
+            value={year}
+            onChange={(e) => onYearChange(Number(e.target.value))}
+            className={selectCls + ' min-w-[110px]'}
+          >
+            {availableYears.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
           </select>
         </div>
 

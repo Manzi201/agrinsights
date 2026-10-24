@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Season, InsightType } from '../types/agriculture';
-import { crops, years, districts } from '../services/agricultureData';
+import { crops, getAvailableYears, districts } from '../services/agricultureData';
 import { generateInsights, getProductionByDistrict } from '../utils/calculations';
 import { getTopDistricts } from '../services/nisr';
 import InsightCard from '../components/ui/InsightCard';
@@ -87,7 +87,7 @@ export default function Insights() {
             <label className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">Year</label>
             <select value={year} onChange={(e) => setYear(Number(e.target.value))}
               className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
-              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              {getAvailableYears().map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
           <div className="flex flex-col">

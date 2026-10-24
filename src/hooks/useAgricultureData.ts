@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { Filters, SummaryStats, DataPoint } from '../types/agriculture';
 import { fetchAgricultureData, fetchSummaryStats, subscribeToDataUpdates, getDataVersion } from '../services/nisr';
+import { getLatestYear } from '../services/agricultureData';
 
 /**
  * Hook for loading filtered agricultural data from the data service.
@@ -52,11 +53,21 @@ export function useDataVersion(): number {
 
 /**
  * Hook for managing filter state.
+ * Defaults to the latest year actually present in the NISR data store.
  */
 export function useFilters(initial?: Partial<Filters>) {
   const [cropId, setCropId] = useState(initial?.cropId ?? 'maize');
   const [season, setSeason] = useState<Filters['season']>(initial?.season ?? 'A');
-  const [year, setYear] = useState(initial?.year ?? 2023);
+  // Default to whatever year NISR has published — auto-updates when new data arrives
+  const [year, setYear] = useState(initial?.year ?? getLatestYear());
+
+  // When the data store updates (e.g. new year published), re-check the latest year
+  const dataVersion = useDataVersion();
+  useEffect(() => {
+    if (initial?.year === undefined) {
+      setYear(getLatestYear());
+    }
+  }, [dataVersion, initial?.year]);
 
   const filters = useMemo(() => ({ cropId, season, year }), [cropId, season, year]);
 
