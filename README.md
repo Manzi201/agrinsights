@@ -207,6 +207,6 @@ Live URL: **https://agrinsights.onrender.com**
 
 ## Team
 
-Built for the **NISR Agricultural Data Hackathon 2024** — Track 1: Agricultural Productivity.
+Built for the **NISR Agricultural Big Data Hackathon 2026** — Track 1: Agricultural Productivity.
 
 Data source: [National Institute of Statistics of Rwanda](https://www.statistics.gov.rw/)
