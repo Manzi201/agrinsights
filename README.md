@@ -1,6 +1,6 @@
 # Agrinsights — Smart Agriculture Intelligence Rwanda
 
-> **Track 1: Agricultural Productivity** · NISR Hackathon 2024  
+> **Track 1: Agricultural Productivity** · NISR Big data Hackathon 2026
 > *Use data to develop innovative solutions that address real agricultural challenges facing Rwanda.*
 
 [![Live Demo](https://img.shields.io/badge/Live-agrinsights.onrender.com-16a34a?style=flat-square)](https://agrinsights.onrender.com)
