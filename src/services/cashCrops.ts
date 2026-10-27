@@ -209,7 +209,7 @@ export function getCashCropChartData(data: CashCropDataPoint[]): {
   Coffee: number;
   Tea: number;
 }[] {
-  const years = [...new Set(data.map((d) => d.year))].sort();
+  const years = Array.from(new Set(data.map((d) => d.year))).sort();
   return years.map((y) => ({
     year: String(y),
     Coffee: data.find((d) => d.crop === 'Coffee' && d.year === y)?.productionTons ?? 0,
@@ -337,7 +337,7 @@ export async function fetchCashCropAreaData(): Promise<CashCropAreaPoint[]> {
 
 /** Returns area chart data grouped by year for both crops. */
 export function getCashCropAreaChartData(data: CashCropAreaPoint[], crop: 'Coffee' | 'Tea') {
-  const years = [...new Set(data.filter((d) => d.crop === crop).map((d) => d.year))].sort();
+  const years = Array.from(new Set(data.filter((d) => d.crop === crop).map((d) => d.year))).sort();
   return years.map((y) => {
     const total = data.find((d) => d.crop === crop && !d.isUnderProduction && d.year === y);
     const active = data.find((d) => d.crop === crop && d.isUnderProduction && d.year === y);

@@ -15,7 +15,7 @@ import {
   getHarvestData,
   getPracticeData,
 } from '../services/nisr';
-import { getCropById, districts } from '../services/agricultureData';
+import { getCropById, districts, getAllData } from '../services/agricultureData';
 import { formatNumber, getProductionByDistrict } from '../utils/calculations';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -174,9 +174,9 @@ export default function Dashboard() {
           color="amber"
         />
         <StatCard
-          label="Districts w/ Irrigation"
+          label="Districts Irrigated"
           value={irrigatedDistricts !== null ? irrigatedDistricts.toString() : '—'}
-          unit="districts"
+          unit={`/ ${new Set(getAllData().map((dp) => dp.districtId)).size || 30} districts`}
           icon={<Droplets className="w-5 h-5 sm:w-6 sm:h-6" />}
           color="blue"
         />

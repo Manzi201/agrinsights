@@ -179,7 +179,7 @@ function computeProductivityData(): CropGrowthRow[] {
   const data = getAllData();
 
   // Use the two most extreme years available in the store for Season A
-  const seasonAYears = [...new Set(data.filter((dp) => dp.season === 'A').map((dp) => dp.year))].sort();
+  const seasonAYears = Array.from(new Set(data.filter((dp) => dp.season === 'A').map((dp) => dp.year))).sort();
   if (seasonAYears.length === 0) return [];
 
   const earliestYear = seasonAYears[0];
@@ -1217,7 +1217,7 @@ function computeOpportunityData(): OpportunityCard[] {
 
   // Investment Opportunity: consecutive growth (season A, 2021-2022-2023)
   // Investment Opportunity: look for consecutive growth across all available Season A years
-  const consYears = [...new Set(data.filter((dp) => dp.season === 'A').map((dp) => dp.year))].sort();
+  const consYears = Array.from(new Set(data.filter((dp) => dp.season === 'A').map((dp) => dp.year))).sort();
   const yearlyProd = new Map<string, Map<string, number>>();
   for (const yr of consYears) {
     for (const dp of data.filter((dp) => dp.season === 'A' && dp.year === yr)) {
@@ -1634,30 +1634,39 @@ function TabBar({ activeTab, onChange }: TabBarProps) {
 // ---------------------------------------------------------------------------
 
 function DataFoundationCard() {
-  useDataVersion(); // re-render when store updates
+  useDataVersion();
   const data = getAllData();
 
+  // Count only districts 0-29 (exclude Total National=30, SSF=31, LSF=32)
   const districtCount = new Set(data.map((dp) => dp.districtId)).size;
   const cropCount     = new Set(data.map((dp) => dp.cropId)).size;
-  const seasonSet     = new Set(data.map((dp) => dp.season));
-  const yearSet       = [...new Set(data.map((dp) => dp.year))].sort();
 
-  const seasonsText = seasonSet.size > 0
-    ? ['A', 'B', 'C'].filter((s) => seasonSet.has(s as 'A' | 'B' | 'C')).map((s) => `Season ${s}`).join(', ')
-    : 'Seasons A, B';
+  // Show seasons and years separately per season to avoid mixing Season C years
+  const seasonAYears = Array.from(new Set(data.filter((dp) => dp.season === 'A').map((dp) => dp.year))).sort();
+  const seasonBYears = Array.from(new Set(data.filter((dp) => dp.season === 'B').map((dp) => dp.year))).sort();
+  const seasonCYears = Array.from(new Set(data.filter((dp) => dp.season === 'C').map((dp) => dp.year))).sort();
 
-  const yearsText = yearSet.length > 0
-    ? yearSet.length === 1
-      ? String(yearSet[0])
-      : `${yearSet[0]}–${yearSet[yearSet.length - 1]}`
-    : 'Loading…';
+  const hasA = seasonAYears.length > 0;
+  const hasB = seasonBYears.length > 0;
+  const hasC = seasonCYears.length > 0;
+
+  const mainYear  = seasonAYears.at(-1) ?? seasonBYears.at(-1) ?? '—';
+  const cYearText = seasonCYears.length > 1
+    ? `${seasonCYears[0]}–${seasonCYears.at(-1)}`
+    : seasonCYears[0] ?? '';
+
+  const seasonSummary = [
+    hasA ? `Season A (${mainYear})` : '',
+    hasB ? `Season B (${mainYear})` : '',
+    hasC ? `Season C (${cYearText})` : '',
+  ].filter(Boolean).join(', ') || 'Loading…';
 
   const lastFetched = data.length > 0 ? new Date().getFullYear() : null;
 
   const items = [
-    districtCount > 0 ? `${districtCount} districts across all 5 provinces` : 'All 30 districts across all 5 provinces',
-    cropCount     > 0 ? `${cropCount} major food crops with yield, area and production data` : '8 major food crops with yield, area and production data',
-    data.length   > 0 ? `${seasonsText} — years: ${yearsText}` : 'Seasons A, B and C',
+    districtCount > 0 ? `${districtCount} districts across all 5 provinces` : '30 districts across all 5 provinces',
+    cropCount     > 0 ? `${cropCount} crop types with yield, area and production data` : 'Crop data loading…',
+    data.length   > 0 ? seasonSummary : 'Seasons A, B and C',
     'Yield per hectare enabling productivity and intensification analysis',
     'Cross-district comparisons for targeting agricultural interventions',
   ];
@@ -1697,6 +1706,12 @@ export default function Solutions() {
   const dataVersion = useDataVersion();
   const [activeTab, setActiveTab] = useState<TabId>('irrigation');
 
+  // Live district count from store — used in banner tag
+  const districtCount = useMemo(
+    () => new Set(getAllData().map((dp) => dp.districtId)).size,
+    [dataVersion],
+  );
+
   const irrigationCoverage = useMemo(() => computeIrrigationData(), [dataVersion]);
   const soilDistricts = useMemo(() => computeSoilData(), [dataVersion]);
   const cropSummary = useMemo(() => computePostHarvestData(), [dataVersion]);
@@ -1714,7 +1729,9 @@ export default function Solutions() {
           Use data to develop innovative solutions that address real agricultural challenges facing Rwanda. Solutions address small-scale irrigation, soil conservation, post-harvest storage, productivity, and export market opportunities — all informed by NISR data and designed for tangible impact on farmers, planners, and policymakers.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {['NISR Data-Driven', 'Farmer-Focused', 'Policy-Ready', 'All 30 Districts'].map((tag) => (
+          {['NISR Data-Driven', 'Farmer-Focused', 'Policy-Ready',
+            districtCount > 0 ? `${districtCount} Districts` : '30 Districts',
+          ].map((tag) => (
             <span key={tag} className="px-2.5 py-1 bg-white/20 rounded-full text-xs font-medium">{tag}</span>
           ))}
         </div>

@@ -7,7 +7,11 @@
 // ---------------------------------------------------------------------------
 
 import type { DataPoint, Filters, SummaryStats, Season } from '../types/agriculture';
-import { getAllData, setAllData, getDistrictById, getCropById } from './agricultureData';
+import {
+  getAllData, setAllData, getDistrictById, getCropById,
+  districtCoords, getCropColor, getProvinceForDistrict, populateRegistries,
+  type LiveDistrict, type LiveCrop,
+} from './agricultureData';
 import {
   buildPxWebUrl, PXWEB_DATA_YEAR,
   PXWEB_CROP_MAP, PXWEB_DISTRICT_MAP, PXWEB_SEASON_MAP,
@@ -139,7 +143,78 @@ export function getLargeScaleData(): LargeScaleYield[] { return _largeScaleData;
 export function getCashAreaData():   CashAreaPoint[]   { return _cashAreaData; }
 export function getCashProdData():   CashProdPoint[]   { return _cashProdData; }
 
-// ─── Table fetchers ───────────────────────────────────────────────────────────
+// ─── Fetch metadata (district + crop names from NISR valueTexts) ─────────────
+
+async function fetchMetadata(): Promise<{ districts: LiveDistrict[]; crops: LiveCrop[] }> {
+  const url = buildPxWebUrl([...CROP_DIR, '_crop_area.px']);
+  const ctrl = new AbortController();
+  const t    = setTimeout(() => ctrl.abort(), TIMEOUT);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (!r.ok) throw new Error(`metadata ${r.status}`);
+    const j = (await r.json()) as {
+      variables: { code: string; values: string[]; valueTexts: string[] }[];
+    };
+
+    // Districts from "District  (ha)" variable — skip codes 30+ (aggregates)
+    const distVar = j.variables.find((v) => v.code.startsWith('District'));
+    const liveDistricts: LiveDistrict[] = [];
+    if (distVar) {
+      distVar.values.forEach((code, idx) => {
+        const codeNum = parseInt(code, 10);
+        if (codeNum > 29) return; // skip Total National, SSF, LSF
+        const name = distVar.valueTexts[idx] ?? `District ${code}`;
+        const id   = name.toLowerCase().replace(/[^a-z]/g, '');
+        const coords = districtCoords.find((dc) => dc.id === id) ?? { lat: -2, lng: 30 };
+        liveDistricts.push({
+          id,
+          name,
+          province: getProvinceForDistrict(name),
+          lat: coords.lat,
+          lng: coords.lng,
+        });
+      });
+    }
+
+    // Crops from "Crop type" variable — skip code 23 (Total developed land)
+    const cropVar = j.variables.find((v) => v.code === 'Crop type');
+    const liveCrops: LiveCrop[] = [];
+    if (cropVar) {
+      cropVar.values.forEach((code, idx) => {
+        if (code === '23') return; // skip total
+        const name = cropVar.valueTexts[idx] ?? `Crop ${code}`;
+        const id   = name.toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '')
+          .replace(/-+/g, '-');
+        // Map PXWEB_CROP_MAP code to our id
+        PXWEB_CROP_MAP[code] = id;
+        liveCrops.push({
+          id,
+          name,
+          nameKinyarwanda: '',
+          category: getCropCategory(name),
+          yieldLow: 0.5,
+          yieldHigh: 20,
+          color: getCropColor(id),
+        });
+      });
+    }
+
+    return { districts: liveDistricts, crops: liveCrops };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function getCropCategory(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('cereal') || n === 'maize' || n === 'sorghum' || n.includes('rice') || n === 'wheat') return 'Cereals';
+  if (n.includes('cassava') || n.includes('potato') || n.includes('yam') || n.includes('taro')) return 'Roots & Tubers';
+  if (n.includes('banana')) return 'Bananas';
+  if (n.includes('bean') || n.includes('pea') || n.includes('groundnut') || n.includes('soybean') || n.includes('soya')) return 'Legumes';
+  return 'Other';
+}
 
 const allDistCodes = Object.keys(DIST);
 const allCropCodes = Object.keys(CROP_MAP);
@@ -374,6 +449,13 @@ export async function initNisrConnection(): Promise<boolean> {
   bump();
 
   try {
+    // ── Step 0: Fetch metadata (district + crop names from NISR) ──────────
+    try {
+      const meta = await fetchMetadata();
+      populateRegistries(meta.districts, meta.crops);
+      await sleep(400);
+    } catch { /* non-critical — use empty registries, data still loads */ }
+
     // ── Step 1: Cultivated area (required)
     const areaResp = await fetchCultivatedArea();
     await sleep(500);
