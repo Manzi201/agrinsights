@@ -1,3 +1,11 @@
+
+
+https://github.com/user-attachments/assets/be05dc23-d9fd-4cad-8e75-1810a5c7a18f
+
+
+
+https://github.com/user-attachments/assets/33ce15d6-62d7-40f0-bbd5-a59ad2198dc8
+
 # Agrinsights — Smart Agriculture Intelligence Rwanda
 
 > **Track 1: Agricultural Productivity** · NISR Big data Hackathon 2026
@@ -210,3 +218,5 @@ Live URL: **https://agrinsights.onrender.com**
 Built for the **NISR Agricultural Big Data Hackathon 2026** — Track 1: Agricultural Productivity.
 
 Data source: [National Institute of Statistics of Rwanda](https://www.statistics.gov.rw/)
+
+Demo video via this link https://drive.google.com/file/d/1RG0u3s7NapE2x-iNL6x0AK17P0otHAPX/view?usp=sharing
